@@ -18,4 +18,4 @@ The server exports a standard-base64 raw Ed25519 public key. The current offline
 
 ## Release work
 
-Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`. Phase 1 still needs complete server fixture coverage, model field reconciliation, and browser/edge integration checks. Consult [the plan](../spec/todo.md) before declaring the SDK production ready.
+Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`. Typecheck covers source, tests, and examples. `npm run test:integration` exercises the SDK against the local Compose server; `npm run docs` generates API HTML under `.typedoc/`, outside the npm package. Check package contents with `npm pack --dry-run --json`. Phase 1 still needs complete server fixture coverage, model field reconciliation, and browser/edge integration checks. Consult [the plan](../spec/todo.md) before declaring the SDK production ready.

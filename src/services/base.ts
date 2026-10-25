@@ -1,4 +1,5 @@
 import type { ListParams, ListResponse } from '../models/generated.js';
+import { CommerceProtocolError } from '../errors.js';
 import type { RequestOptions, ResponseKind } from '../transport.js';
 import { pathSegment, Transport } from '../transport.js';
 
@@ -52,7 +53,11 @@ export class CollectionService<R, List extends ListParams = ListParams, Detail =
       throw new RangeError('offset must be non-negative');
     while (true) {
       const page = await this.list({ ...params, limit, offset } as List, options);
-      if (page.data.length === 0) return;
+      if (page.data.length === 0) {
+        if (offset < page.total)
+          throw new CommerceProtocolError('Empty page before pagination total');
+        return;
+      }
       for (const item of page.data) yield item;
       offset += page.data.length;
       if (offset >= page.total) return;

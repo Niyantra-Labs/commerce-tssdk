@@ -106,6 +106,24 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
+function withAbort<T>(value: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    value.then(
+      (result) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(result);
+      },
+      (cause: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(cause);
+      },
+    );
+  });
+}
+
 async function readLimited(response: Response, maxBytes: number): Promise<string> {
   const length = response.headers.get('content-length');
   if (length && Number(length) > maxBytes)
@@ -141,7 +159,12 @@ export class Transport {
   private readonly auth: Authentication;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
-  private readonly rateLimit?: { intervalMs: number; burst: number; nextAvailable: number[] };
+  private readonly rateLimit?: {
+    intervalMs: number;
+    burst: number;
+    tokens: number;
+    lastRefill: number;
+  };
 
   constructor(options: ClientOptions) {
     if (!options || !options.auth) throw new CommerceValidationError('Authentication is required');
@@ -183,7 +206,12 @@ export class Transport {
         burst < 1
       )
         throw new CommerceValidationError('Invalid rate limit');
-      this.rateLimit = { intervalMs: 1000 / requestsPerSecond, burst, nextAvailable: [] };
+      this.rateLimit = {
+        intervalMs: 1000 / requestsPerSecond,
+        burst,
+        tokens: burst,
+        lastRefill: Date.now(),
+      };
     }
     if (
       !Number.isFinite(this.timeoutMs) ||
@@ -229,25 +257,6 @@ export class Transport {
       assertSafeNumbers(spec.body);
       body = JSON.stringify(spec.body);
     }
-    const headers = new Headers({ Accept: 'application/json' });
-    if (body !== undefined) headers.set('Content-Type', 'application/json');
-    if (options.requestId) headers.set('X-Request-ID', options.requestId);
-    if (!spec.unauthenticated) {
-      if ('apiKey' in this.auth) headers.set('X-API-Key', this.auth.apiKey!);
-      else {
-        const token =
-          typeof this.auth.bearerToken === 'function'
-            ? await this.auth.bearerToken()
-            : this.auth.bearerToken;
-        if (!token) throw new CommerceValidationError('Bearer token is empty');
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-    }
-    for (const [key, value] of Object.entries(spec.headers ?? {})) {
-      if (/^(authorization|x-api-key|host|content-type)$/i.test(key))
-        throw new CommerceValidationError('Protected header override');
-      headers.set(key, value);
-    }
     const timeout = options.timeoutMs ?? this.timeoutMs;
     if (!Number.isFinite(timeout) || timeout <= 0)
       throw new CommerceValidationError('Invalid timeout');
@@ -261,17 +270,44 @@ export class Transport {
     );
     const retryable = spec.retryable ?? spec.method === 'GET';
     try {
+      const headers = new Headers({ Accept: 'application/json' });
+      if (body !== undefined) headers.set('Content-Type', 'application/json');
+      if (options.requestId) headers.set('X-Request-ID', options.requestId);
+      if (!spec.unauthenticated) {
+        if ('apiKey' in this.auth) headers.set('X-API-Key', this.auth.apiKey!);
+        else {
+          if (controller.signal.aborted) throw controller.signal.reason;
+          const bearer = this.auth.bearerToken;
+          const token =
+            typeof bearer === 'function'
+              ? await withAbort(Promise.resolve().then(bearer), controller.signal)
+              : bearer;
+          if (!token) throw new CommerceValidationError('Bearer token is empty');
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+      }
+      for (const [key, value] of Object.entries(spec.headers ?? {})) {
+        if (/^(authorization|x-api-key|host|content-type)$/i.test(key))
+          throw new CommerceValidationError('Protected header override');
+        headers.set(key, value);
+      }
       for (let attempt = 0; ; attempt++) {
         if (controller.signal.aborted) throw controller.signal.reason;
         if (this.rateLimit) {
           const state = this.rateLimit;
-          const now = Date.now();
-          while (state.nextAvailable.length && state.nextAvailable[0]! <= now)
-            state.nextAvailable.shift();
-          const previous = state.nextAvailable.at(-1) ?? now;
-          const start = state.nextAvailable.length < state.burst ? now : Math.max(now, previous);
-          state.nextAvailable.push(start + state.intervalMs);
-          if (start > now) await wait(start - now, controller.signal);
+          while (true) {
+            const now = Date.now();
+            state.tokens = Math.min(
+              state.burst,
+              state.tokens + Math.max(0, now - state.lastRefill) / state.intervalMs,
+            );
+            state.lastRefill = now;
+            if (state.tokens >= 1) {
+              state.tokens -= 1;
+              break;
+            }
+            await wait(Math.ceil((1 - state.tokens) * state.intervalMs), controller.signal);
+          }
         }
         let response: Response;
         try {
@@ -343,7 +379,13 @@ export class Transport {
             throw new CommerceProtocolError('Missing data envelope');
           if (spec.kind === 'data') return (parsed as { data: T }).data;
           const value = parsed as { data: unknown; total?: unknown };
-          if (!Array.isArray(value.data) || typeof value.total !== 'number')
+          if (value.data === null && value.total === 0) value.data = [];
+          if (
+            !Array.isArray(value.data) ||
+            typeof value.total !== 'number' ||
+            !Number.isSafeInteger(value.total) ||
+            value.total < 0
+          )
             throw new CommerceProtocolError('Invalid list envelope');
         }
         return parsed as T;

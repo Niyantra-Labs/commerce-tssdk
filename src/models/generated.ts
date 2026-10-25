@@ -381,7 +381,8 @@ export interface Application {
 }
 
 export interface ApplicationCreateParams {
-  product_id: string;
+  org_id: string;
+  product_id?: string | null;
   name: string;
   description?: string | null;
   environment: string;
@@ -397,7 +398,10 @@ export interface ApplicationUpdateParams {
 }
 
 export interface ApplicationListParams extends ListParams {
+  org_id?: string;
   product_id?: string | null;
+  environment?: string;
+  status?: string;
 }
 
 export interface APIKey {
@@ -429,13 +433,15 @@ export interface APIKeyCreateParams {
   application_id: string;
   name: string;
   scopes?: ReadonlyArray<string>;
+  environment?: string;
   rate_limit_per_minute?: number | null;
-  allowed_ips?: ReadonlyArray<string>;
   expires_at?: string | null;
 }
 
 export interface APIKeyListParams extends ListParams {
   application_id?: string | null;
+  environment?: string;
+  status?: string;
 }
 
 export interface APIKeyRevokeParams {
@@ -502,6 +508,7 @@ export interface Customer {
 }
 
 export interface CustomerCreateParams {
+  org_id: string;
   name: string;
   email: string;
   external_id?: string | null;
@@ -1101,6 +1108,7 @@ export interface Product {
 }
 
 export interface ProductCreateParams {
+  org_id: string;
   name: string;
   slug: string;
   description?: string | null;

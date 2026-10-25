@@ -1,7 +1,7 @@
 import { CommerceCryptoError, CommerceValidationError } from './errors.js';
 import type { WebhookEventEnvelope } from './models/contracts.js';
 
-type HeaderSource = Headers | Readonly<Record<string, string>>;
+export type HeaderSource = Headers | Readonly<Record<string, string>>;
 function header(source: HeaderSource, name: string): string | undefined {
   if (source instanceof Headers) return source.get(name) ?? undefined;
   return Object.entries(source).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];

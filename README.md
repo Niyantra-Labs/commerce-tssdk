@@ -19,7 +19,11 @@ for (const license of page.data) console.log(license.id);
 
 The client accepts `auth: { bearerToken }` as an alternative. `fetch`, `timeoutMs`, and `maxRetries` are configurable. Every service method accepts a final request options argument with `signal`, `requestId`, and `timeoutMs`.
 
-See [`examples/`](examples/) for server-side quick start, usage reporting, webhook handling, and pagination.
+See the [quick start example](examples/quickstart.ts) for server-side setup. The `examples/` directory also covers usage reporting, webhook handling, and pagination.
+
+## Live integration test
+
+From this repository, start the adjacent Commerce checkout with `docker compose -f integration/compose.yml up -d --build`. The stack binds only the app to `127.0.0.1:19094`; Postgres and Redis stay inside the Compose network. Run `npm run test:integration` to exercise the SDK against that server. Override the URL with `COMMERCE_TEST_URL` if needed. The smoke test creates disposable records in the integration database and does not print the API secret. Stop the stack with `docker compose -f integration/compose.yml down` when finished.
 
 ## Namespaces
 

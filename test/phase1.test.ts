@@ -151,6 +151,14 @@ describe('Phase 1 server contracts', () => {
     expect(ids).toEqual(['0', '1', '2']);
   });
 
+  it('normalizes an empty server list encoded as null', async () => {
+    const client = new Client({
+      auth: { apiKey: 'sk_test' },
+      fetch: async () => json({ data: null, total: 0 }),
+    });
+    await expect(client.orders.list()).resolves.toEqual({ data: [], total: 0 });
+  });
+
   it('provides strict date and result helpers', async () => {
     expect(toDate('2026-04-03T12:00:00Z').toISOString()).toBe('2026-04-03T12:00:00.000Z');
     expect(() => toDate('April 3, 2026')).toThrow();

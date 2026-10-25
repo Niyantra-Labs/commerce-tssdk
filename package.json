@@ -34,13 +34,14 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "vitest run",
-    "fmt": "prettier --write src test examples README.md doc package.json",
-    "fmt:check": "prettier --check src test examples README.md doc package.json",
+    "test:integration": "npm run build && node integration/live-smoke.mjs",
+    "fmt": "prettier --write src test examples integration README.md doc package.json",
+    "fmt:check": "prettier --check src test examples integration README.md doc package.json",
     "lint": "eslint .",
-    "docs": "typedoc --out dist/docs src/index.ts",
+    "docs": "typedoc --out .typedoc src/index.ts",
     "audit": "npm audit --omit=dev"
   },
   "devDependencies": {

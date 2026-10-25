@@ -141,7 +141,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] `README.md` with badge row, install snippet, quick-start, full endpoint table
 - [ ] `doc/developer-guide.md` with architecture notes, retry semantics, auth flows, runtime compatibility matrix (Node / Bun / Deno / browser / Workers / Vercel Edge)
 - [ ] TSDoc `/** */` on every exported class, interface, and method with at least one usage example per major surface
-- [ ] `typedoc` configuration + generated HTML docs under `dist/docs/` (opt-in via `npm run docs`)
+- [x] `typedoc` configuration + generated HTML docs under `.typedoc/` (opt-in via `npm run docs`, excluded from the npm tarball)
 - [ ] `examples/quickstart.ts` — license management
 - [ ] `examples/usage-reporting.ts` — HMAC-signed batches
 - [ ] `examples/webhook-handler-express.ts` — Express middleware with signature verification
@@ -155,6 +155,7 @@ Each service is a class (or object literal with methods) that shares a reference
 ## Phase 2: Testing
 
 ### 2.1 Unit Tests (vitest)
+- [x] Initial transport and crypto regression suite: auth selection, HTTPS requirement, query omission, Retry-After, no mutation retry, shared token bucket, abort/timeout (including bearer callback), malformed responses, pagination consistency/cap, webhook timestamp/signature/JSON boundaries.
 - [ ] Client construction and option validation tests
 - [ ] Request building tests — assert final URL, headers, body via a fetch mock
 - [ ] Error decoding tests (malformed JSON, missing fields, non-JSON bodies, HTML error pages)
@@ -201,10 +202,11 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] `collectAll` cap tests
 
 ### 2.4 Integration Tests
+- [x] Docker Compose live smoke: isolated Commerce/Postgres/Redis on loopback port 19094; organization, product, customer, application, API key, authenticated list, license validation, signed usage ingestion, contacts, and pagination. Run with `npm run test:integration`.
 - [ ] Fixture helpers — spin up an MSW handler set and return a pre-configured `Client`
-- [ ] End-to-end license lifecycle (create → validate → activate → deactivate)
+- [x] End-to-end license lifecycle (create → validate → activate → deactivate) against the Compose server
 - [ ] End-to-end subscription lifecycle
-- [ ] End-to-end usage reporting (signing → ingestion)
+- [x] End-to-end usage reporting (signing → ingestion) against the Compose server
 - [ ] End-to-end webhook delivery
 
 ### 2.5 Runtime Compatibility Tests

@@ -1,0 +1,60 @@
+name: commerce-sdk-integration
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: commerce_sdk
+      POSTGRES_PASSWORD: commerce_sdk_local
+      POSTGRES_DB: commerce_sdk
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U commerce_sdk -d commerce_sdk']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  app:
+    build:
+      context: ../../commerce
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: development
+      APP_HOST: 0.0.0.0
+      APP_PORT: 9094
+      APP_SECRET: commerce-sdk-integration-only
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: commerce_sdk
+      DB_PASSWORD: commerce_sdk_local
+      DB_NAME: commerce_sdk
+      DB_SSLMODE: disable
+      REDIS_ADDR: redis:6379
+      WORKER_ENABLED: 'true'
+      WORKER_COUNT: '1'
+      WORKER_CONCURRENCY: '1'
+      AUTH_MODE: delegated
+      AUTH_BUILTIN_ENABLED: 'false'
+      RELEASE_STORAGE_BACKEND: local
+      RELEASE_STORAGE_LOCAL_DIR: /tmp/commerce-releases
+    ports:
+      - '127.0.0.1:19094:9094'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+volumes:
+  postgres_data:
+  redis_data:
