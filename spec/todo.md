@@ -1,6 +1,8 @@
 # Niyantra Commerce TypeScript SDK - TODO
 
-> **Review status (2026-10-25):** This repository contains a plan, not SDK code. The Go SDK is the public API parity target; the Commerce server's registered routes, JSON shapes, authentication, and cryptographic protocols are the wire contract. Some Go methods and helpers currently disagree with the server. The corrective checklist at the end of this file is **P0/P1 release scope** and supersedes conflicting bullets below. Do not mark a feature complete from mocked responses alone; confirm it against a server contract test. Record compared repository revisions during implementation.
+> **Implementation status (2026-10-25):** Phase 1 has started. The repository now has an ESM package, typed service surface, shared transport, signed usage reporter, webhook verifier, generated Go model baseline, documentation, and initial contract-focused tests. The SDK is **not production ready or published**. The Go SDK is the public API parity target; Commerce server handlers are the wire contract. The corrective checklist below supersedes conflicting bullets. Compared revisions: Go SDK `fe24005`, Commerce `715ff7c`.
+
+**Phase 1 work still required:** Reconcile every generated model and endpoint result with server JSON, add full route fixture and real-server tests, verify browser/edge runtime behavior and CORS, finish package/API documentation, and resolve offline certificate signing with the server. Do not mark an endpoint complete from mocked responses alone.
 
 Parallel to [`commerce-gosdk`](https://github.com/Niyantra-Labs/commerce-gosdk)
 and [`commerce-rustsdk`](https://github.com/Niyantra-Labs/commerce-rustsdk).
@@ -11,30 +13,30 @@ SDKs stay in sync.
 ## Phase 1: Core SDK
 
 ### 1.1 Project Setup
-- [ ] Initialize npm package (`npm init -y`) — scoped name `@niyantra/commerce`
+- [x] Initialize npm package — scoped name `@niyantra/commerce`
 - [ ] `package.json`: author, license = "MIT", description, repository, homepage, keywords, bugs
 - [ ] Set up `src/` module layout — one file per domain (`customer.ts`, `license.ts`, …) + a `services/` folder for HTTP surfaces
 - [ ] Choose ESM-only or dual ESM/CJS from tested consumer needs; for dual output, emit format-correct declarations and verify both import and require
-- [ ] `tsconfig.json` — `target: ES2022`, `module: ESNext`, `moduleResolution: Bundler`, `strict: true`, `exactOptionalPropertyTypes: true`, `noUncheckedIndexedAccess: true`, `declaration: true`
-- [ ] `tsconfig.build.json` extending the root with `rootDir: src`, `outDir: dist`, tests excluded
-- [ ] `exports` map in `package.json` matching the selected module format with correct declarations for every export
+- [x] `tsconfig.json` — ES2022, NodeNext module resolution, `strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, declarations
+- [x] `tsconfig.build.json` extending the root with `rootDir: src`, `outDir: dist`, tests excluded
+- [x] `exports` map in `package.json` matching ESM output and declarations for the root export
 - [ ] Set Node engine minimum only after runtime smoke tests; `crypto.subtle` has no `timingSafeEqual` method
 - [ ] Browser / edge runtime support (Cloudflare Workers, Vercel Edge, Deno) — zero Node-only built-ins in the hot path
-- [ ] Runtime dependencies kept minimal: prefer platform `fetch` and `crypto.subtle` over `axios` / `node-fetch` / `jsonwebtoken`
+- [x] Runtime dependencies kept minimal: platform `fetch` and `crypto.subtle`; no runtime dependencies
 - [ ] Dev dependencies: `typescript`, `tsup`, `vitest`, `@vitest/coverage-v8`, `msw` (mock service worker for integration tests), `@types/node`, `eslint`, `@typescript-eslint/*`, `prettier`, `typedoc`
-- [ ] `Makefile` (or npm scripts): `fmt`, `lint`, `typecheck`, `test`, `build`, `docs`, `audit`
-- [ ] `LICENSE` (MIT, same text as Go SDK)
-- [ ] `.gitignore` (node_modules/, dist/, coverage/, *.tsbuildinfo, .env*)
-- [ ] `.prettierrc` — single quotes, trailing commas, 100-char width
+- [x] npm scripts: `fmt`, `lint`, `typecheck`, `test`, `build`, `docs`, `audit`
+- [x] `LICENSE` (MIT, same text as Go SDK)
+- [x] `.gitignore` (node_modules/, dist/, coverage/, *.tsbuildinfo, .env*)
+- [x] `.prettierrc.json` — single quotes, trailing commas, 100-char width
 - [ ] `eslint.config.js` (flat config) — `@typescript-eslint/strict-type-checked` + `eslint-plugin-import` + `eslint-plugin-unicorn`
-- [ ] `.editorconfig`
-- [ ] `.nvmrc` pinning Node 20
+- [x] `.editorconfig`
+- [x] `.nvmrc` pinning Node 20
 
 ### 1.2 Type System & Models
 - [ ] Shared: `ListParams`, `ListResponse<T>`, `ApiError`, `DataResponse<T>`, `Metadata`, `Address`
 - [ ] `ListParams` type with `limit`, `offset`, `search`, `status` and a `buildQuery(params)` helper; add only endpoint-specific query fields accepted by the server (there is no general `sort` contract)
 - [ ] Error hierarchy — `CommerceError` base class with subclasses: `CommerceApiError`, `CommerceHttpError`, `CommerceRateLimitError`, `CommerceValidationError`, `CommerceCryptoError`, `CommerceTimeoutError`. Each carries `code`, `status`, `requestId`, `cause`.
-- [ ] Discriminated union `Result<T>` alternative helper for consumers that prefer non-throwing APIs
+- [x] Discriminated union `Result<T>` and `asResult` helper for consumers that prefer non-throwing APIs
 - [ ] `Organization` interface + `CreateOrganizationParams` / `UpdateOrganizationParams` / `ListOrganizationsParams`
 - [ ] `Product` interface + create/update/list params
 - [ ] `Plan` interface + create/update/list/compare params
