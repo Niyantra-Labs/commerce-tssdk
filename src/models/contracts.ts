@@ -185,3 +185,43 @@ export interface PlanComparison {
     readonly values: ReadonlyArray<string>;
   }>;
 }
+/** An entry of `GET /gateway-providers`. */
+export interface GatewayProvider {
+  readonly id: string;
+  readonly name: string;
+  readonly region: string;
+  readonly capabilities: Go.GatewayCapabilities;
+}
+/** `GET /gateway-providers/{provider}/schema`; unknown providers return empty fields. */
+export interface GatewayProviderSchema {
+  readonly provider: string;
+  readonly schema: { readonly fields: ReadonlyArray<Go.GatewayCredentialField> | null };
+  readonly capabilities: Go.GatewayCapabilities;
+}
+/** `POST /gateway-configs/{id}/test`, returned directly (no `data` envelope). */
+export interface GatewayConfigTestResult {
+  readonly status: 'healthy' | 'error' | (string & {});
+  readonly message: string;
+}
+/** `GET /notification-templates/{id}`. */
+export interface NotificationTemplateDetail {
+  readonly template: Go.NotificationTemplate;
+  readonly org_name: string;
+}
+/** `GET /notifications/{id}`. */
+export interface NotificationDetail {
+  readonly notification: Go.Notification;
+  readonly org_name: string;
+  readonly template_name?: string | null;
+}
+/**
+ * A streaming artifact download. Read `body` (or `response`) once; nothing is
+ * buffered by the SDK. Verify `checksumSha256` after reading.
+ */
+export interface ReleaseDownload {
+  readonly response: Response;
+  readonly body: ReadableStream<Uint8Array> | null;
+  readonly contentType?: string;
+  readonly filename?: string;
+  readonly checksumSha256?: string;
+}

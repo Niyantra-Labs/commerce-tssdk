@@ -1680,3 +1680,425 @@ export interface WebhookEventEnvelope {
   readonly org_id: string;
   readonly data: unknown;
 }
+
+/** A payment gateway configuration. Credentials are stored encrypted and never returned. */
+export interface GatewayConfig {
+  readonly id: string;
+  readonly org_id: string;
+  readonly provider: string;
+  readonly display_name: string;
+  readonly environment: string;
+  readonly is_default: boolean;
+  readonly status: string;
+  readonly supports_subscriptions: boolean;
+  readonly supports_refunds: boolean;
+  readonly supports_saved_cards: boolean;
+  readonly supports_checkout_sessions: boolean;
+  readonly supports_webhooks: boolean;
+  readonly supported_currencies?: ReadonlyArray<string>;
+  readonly webhook_endpoint_url?: string | null;
+  readonly last_health_check_at?: string | null;
+  readonly last_health_status?: string | null;
+  readonly consecutive_failures: number;
+  readonly metadata?: Metadata;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+/** `credentials` are provider secrets: send them only from a backend, never a browser. */
+export interface GatewayConfigCreateParams {
+  org_id: string;
+  provider: string;
+  display_name?: string;
+  environment?: string;
+  credentials?: Metadata;
+  is_default?: boolean;
+  metadata?: Metadata;
+}
+
+export interface GatewayConfigUpdateParams {
+  display_name?: string | null;
+  environment?: string | null;
+  credentials?: Metadata;
+  is_default?: boolean | null;
+  status?: string | null;
+  metadata?: Metadata;
+}
+
+export interface GatewayCapabilities {
+  readonly supports_subscriptions: boolean;
+  readonly supports_refunds: boolean;
+  readonly supports_saved_cards: boolean;
+  readonly supports_checkout_sessions: boolean;
+  readonly supports_webhooks: boolean;
+  readonly supported_currencies?: ReadonlyArray<string>;
+}
+
+/** One credential input a provider requires; `pattern` is an anchored regular expression. */
+export interface GatewayCredentialField {
+  readonly key: string;
+  readonly label: string;
+  readonly type: string;
+  readonly required: boolean;
+  readonly placeholder?: string;
+  readonly help?: string;
+  readonly pattern?: string;
+  readonly pattern_message?: string;
+  readonly min_length?: number;
+  readonly max_length?: number;
+}
+
+export interface GatewayConfigListParams extends PageParams {
+  provider?: string;
+  status?: string;
+}
+
+export interface NotificationTemplate {
+  readonly id: string;
+  readonly org_id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly description?: string | null;
+  readonly channel: string;
+  readonly subject?: string | null;
+  readonly body_template: string;
+  readonly body_html?: string | null;
+  readonly variables: ReadonlyArray<string> | null;
+  readonly from_name?: string | null;
+  readonly from_address?: string | null;
+  readonly reply_to?: string | null;
+  readonly status: string;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface NotificationTemplateCreateParams {
+  org_id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  channel: string;
+  subject?: string | null;
+  body_template: string;
+  body_html?: string | null;
+  variables?: ReadonlyArray<string>;
+  from_name?: string | null;
+  from_address?: string | null;
+  reply_to?: string | null;
+}
+
+export interface NotificationTemplateUpdateParams {
+  name?: string | null;
+  slug?: string | null;
+  description?: string | null;
+  subject?: string | null;
+  body_template?: string | null;
+  body_html?: string | null;
+  variables?: ReadonlyArray<string>;
+  from_name?: string | null;
+  from_address?: string | null;
+  reply_to?: string | null;
+  status?: string | null;
+}
+
+/** An email or SMS notification and its delivery state. */
+export interface Notification {
+  readonly id: string;
+  readonly org_id: string;
+  readonly template_id?: string | null;
+  readonly channel: string;
+  readonly recipient: string;
+  readonly recipient_name?: string | null;
+  readonly subject?: string | null;
+  readonly body: string;
+  readonly body_html?: string | null;
+  readonly provider: string;
+  readonly provider_message_id?: string | null;
+  readonly status: string;
+  readonly queued_at: string;
+  readonly sent_at?: string | null;
+  readonly delivered_at?: string | null;
+  readonly failed_at?: string | null;
+  readonly opened_at?: string | null;
+  readonly clicked_at?: string | null;
+  readonly failure_reason?: string | null;
+  readonly failure_code?: string | null;
+  readonly attempt_count: number;
+  readonly max_attempts: number;
+  readonly next_retry_at?: string | null;
+  readonly trigger_type?: string | null;
+  readonly trigger_id?: string | null;
+  readonly metadata: Metadata | null;
+  readonly created_at: string;
+}
+
+/** Queue a notification from a template (`template_id` + `variables`) or from an explicit `subject`/`body`. */
+export interface NotificationQueueParams {
+  org_id: string;
+  template_id?: string | null;
+  channel: string;
+  recipient: string;
+  recipient_name?: string | null;
+  subject?: string | null;
+  body?: string | null;
+  body_html?: string | null;
+  from_name?: string | null;
+  from_address?: string | null;
+  reply_to?: string | null;
+  variables?: Metadata;
+  max_attempts?: number;
+  trigger_type?: string | null;
+  trigger_id?: string | null;
+  metadata?: Metadata;
+}
+
+export interface NotificationTemplateListParams extends PageParams {
+  org_id?: string;
+  channel?: string;
+  status?: string;
+  search?: string;
+}
+
+export interface NotificationListParams extends PageParams {
+  org_id?: string;
+  channel?: string;
+  status?: string;
+  provider?: string;
+  search?: string;
+}
+
+/** Who sees an application notification; empty lists match everyone. */
+export interface ApplicationNotificationAudience {
+  readonly application_ids?: ReadonlyArray<string>;
+  readonly release_channels?: ReadonlyArray<string>;
+  readonly platforms?: ReadonlyArray<string>;
+  readonly architectures?: ReadonlyArray<string>;
+  readonly min_version?: string | null;
+  readonly max_version?: string | null;
+  readonly customer_ids?: ReadonlyArray<string>;
+  readonly license_ids?: ReadonlyArray<string>;
+  readonly maintenance_required?: boolean | null;
+}
+
+/** An in-app announcement delivered to installed software through the feed. */
+export interface ApplicationNotification {
+  readonly id: string;
+  readonly org_id: string;
+  readonly product_id: string;
+  readonly release_id?: string | null;
+  readonly title: string;
+  readonly message: string;
+  readonly severity: string;
+  readonly message_type: string;
+  readonly call_to_action: Metadata | null;
+  readonly audience: ApplicationNotificationAudience;
+  readonly priority: number;
+  readonly pinned: boolean;
+  readonly dismissible: boolean;
+  readonly starts_at?: string | null;
+  readonly expires_at?: string | null;
+  readonly status: string;
+  readonly metadata: Metadata | null;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface ApplicationNotificationReadState {
+  readonly id: string;
+  readonly notification_id: string;
+  readonly org_id: string;
+  readonly customer_id?: string | null;
+  readonly license_id?: string | null;
+  readonly machine_id?: string | null;
+  readonly application_id?: string | null;
+  readonly identity_key: string;
+  readonly state: string;
+  readonly acknowledged_at: string;
+  readonly metadata: Metadata | null;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface ApplicationNotificationCreateParams {
+  org_id: string;
+  product_id: string;
+  release_id?: string | null;
+  title: string;
+  message: string;
+  severity?: string;
+  message_type?: string;
+  call_to_action?: Metadata;
+  audience?: ApplicationNotificationAudience;
+  priority?: number;
+  pinned?: boolean;
+  dismissible?: boolean;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  status?: string;
+  metadata?: Metadata;
+}
+
+export interface ApplicationNotificationUpdateParams {
+  product_id?: string | null;
+  release_id?: string | null;
+  title?: string | null;
+  message?: string | null;
+  severity?: string | null;
+  message_type?: string | null;
+  call_to_action?: Metadata;
+  audience?: ApplicationNotificationAudience | null;
+  priority?: number | null;
+  pinned?: boolean | null;
+  dismissible?: boolean | null;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  status?: string | null;
+  metadata?: Metadata;
+}
+
+export interface ApplicationNotificationFeedItem {
+  readonly notification: ApplicationNotification;
+  readonly state?: ApplicationNotificationReadState | null;
+}
+
+/** Authenticate with the client's API key, or pass `license_key` from installed software. */
+export interface ApplicationNotificationFeedParams {
+  application_id?: string;
+  license_key?: string;
+  installation_id?: string;
+  machine_id?: string;
+  version?: string;
+  channel?: string;
+  os?: string;
+  arch?: string;
+  release_id?: string;
+}
+
+/** Identify the installation the same way as the feed request; `state` defaults to "acknowledged". */
+export interface ApplicationNotificationAckParams {
+  application_id?: string;
+  license_key?: string;
+  installation_id?: string;
+  machine_id?: string;
+  state?: string;
+  metadata?: Metadata;
+}
+
+export interface ApplicationNotificationListParams extends PageParams {
+  org_id?: string;
+  product_id?: string;
+  status?: string;
+  search?: string;
+}
+
+/** A versioned binary release of a product; artifacts hang off it. */
+export interface Release {
+  readonly id: string;
+  readonly product_id: string;
+  readonly version: string;
+  readonly version_major?: number | null;
+  readonly version_minor?: number | null;
+  readonly version_patch?: number | null;
+  readonly channel: string;
+  readonly release_notes?: string | null;
+  readonly changelog?: string | null;
+  readonly min_os_version?: string | null;
+  readonly requires_license_type?: string | null;
+  readonly status: string;
+  readonly published_at?: string | null;
+  readonly yanked_at?: string | null;
+  readonly yank_reason?: string | null;
+  readonly metadata: Metadata | null;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface ReleaseArtifact {
+  readonly id: string;
+  readonly release_id: string;
+  readonly os: string;
+  readonly arch: string;
+  readonly filename: string;
+  readonly file_size_bytes: number;
+  readonly content_type: string;
+  readonly checksum_sha256: string;
+  readonly checksum_md5?: string | null;
+  readonly storage_backend: string;
+  readonly storage_path: string;
+  readonly storage_bucket?: string | null;
+  readonly signed: boolean;
+  readonly signature?: string | null;
+  readonly signing_key_id?: string | null;
+  readonly download_count: number;
+  readonly metadata: Metadata | null;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface ReleaseCreateParams {
+  product_id: string;
+  version: string;
+  channel?: string;
+  release_notes?: string | null;
+  changelog?: string | null;
+  min_os_version?: string | null;
+  requires_license_type?: string | null;
+  metadata?: Metadata;
+}
+
+export interface ReleaseUpdateParams {
+  version?: string | null;
+  channel?: string | null;
+  release_notes?: string | null;
+  changelog?: string | null;
+  min_os_version?: string | null;
+  requires_license_type?: string | null;
+  status?: string | null;
+  yank_reason?: string | null;
+  metadata?: Metadata;
+}
+
+export interface ReleaseDetail {
+  readonly release?: Release | null;
+  readonly product_name?: string;
+  readonly artifacts: ReadonlyArray<ReleaseArtifact> | null;
+}
+
+export interface ReleaseArtifactChecksum {
+  readonly artifact_id: string;
+  readonly filename: string;
+  readonly checksum_sha256: string;
+  readonly checksum_md5?: string | null;
+  readonly signed: boolean;
+  readonly signature?: string | null;
+}
+
+export interface DownloadAuthorizeParams {
+  license_key: string;
+  artifact_id: string;
+}
+
+/** A short-lived download grant; `url` embeds a signed token usable until `expires_at`. */
+export interface AuthorizedDownload {
+  readonly artifact: ReleaseArtifact;
+  readonly release: Release;
+  readonly url: string;
+  readonly expires_at: string;
+  readonly license_key: string;
+}
+
+export interface ReleaseListParams extends PageParams {
+  product_id?: string;
+  channel?: string;
+  status?: string;
+  search?: string;
+}
+
+/** Multipart fields for `POST /releases/{id}/artifacts`. */
+export interface ReleaseArtifactUploadParams {
+  /** The artifact bytes. The server currently caps request bodies at 10 MiB. */
+  file: Blob;
+  filename: string;
+  os?: string;
+  arch?: string;
+}

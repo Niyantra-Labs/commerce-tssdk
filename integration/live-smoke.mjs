@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import { Buffer } from 'node:buffer';
+import { Blob, Buffer } from 'node:buffer';
 import console from 'node:console';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import http from 'node:http';
 import process from 'node:process';
 import { setTimeout } from 'node:timers';
+import { URL } from 'node:url';
+import { TextEncoder } from 'node:util';
 import { Client, OfflineVerifier, WebhookVerifier } from '../dist/index.js';
 
 const baseUrl = process.env.COMMERCE_TEST_URL ?? 'http://127.0.0.1:19094';
@@ -315,6 +317,8 @@ async function main() {
 
   await domainLifecycles({ api: authenticated, organization, product, customer });
 
+  await serverExtensions({ api: authenticated, organization, product, license });
+
   await tenantIsolation({
     organization,
     authenticated,
@@ -607,6 +611,156 @@ async function domainLifecycles({ api, organization, product, customer }) {
   passed('referral program/code/events (qualify/reward/reject, 409 on invalid transitions)');
 }
 
+/**
+ * Server routes beyond Go SDK parity: gateway configs, notifications,
+ * application notifications, and releases with a streamed download.
+ */
+async function serverExtensions({ api, organization, product, license }) {
+  const id = randomUUID().slice(0, 8);
+
+  const providers = await api.gatewayProviders.list();
+  assert.ok(providers.some((provider) => provider.id === 'stripe'));
+  const schema = await api.gatewayProviders.schema('stripe');
+  assert.ok(schema.schema.fields?.some((field) => field.key === 'secret_key' && field.required));
+  // No secret_key, so the connectivity test fails locally without calling Stripe.
+  const gateway = await api.gatewayConfigs.create({
+    org_id: organization.id,
+    provider: 'stripe',
+    environment: 'sandbox',
+    credentials: {},
+  });
+  assert.equal(gateway.display_name, 'Stripe');
+  assert.ok(!('credentials' in gateway));
+  const tested = await api.gatewayConfigs.test(gateway.id);
+  assert.equal(tested.status, 'error');
+  assert.match(tested.message, /secret_key is required/);
+  assert.equal((await api.gatewayConfigs.get(gateway.id)).last_health_status, 'error');
+  assert.equal((await api.gatewayConfigs.setDefault(gateway.id)).is_default, true);
+  assert.equal(
+    (await api.gatewayConfigs.update(gateway.id, { display_name: 'Stripe sandbox' })).display_name,
+    'Stripe sandbox',
+  );
+  assert.ok(
+    (await api.gatewayConfigs.list({ provider: 'stripe' })).data.some((g) => g.id === gateway.id),
+  );
+  await api.gatewayConfigs.delete(gateway.id);
+  passed('gateway configs (providers/schema, create/test/set-default/update/list/delete)');
+
+  const template = await api.notificationTemplates.create({
+    org_id: organization.id,
+    name: `Welcome ${id}`,
+    slug: `welcome-${id}`,
+    channel: 'email',
+    subject: 'Welcome {{.name}}',
+    body_template: 'Hello {{.name}}',
+    variables: ['name'],
+  });
+  assert.equal(template.org_id, organization.id);
+  assert.equal(template.body_template, 'Hello {{.name}}');
+  const templateDetail = await api.notificationTemplates.get(template.id);
+  assert.equal(templateDetail.template.id, template.id);
+  assert.ok(templateDetail.org_name);
+  assert.equal(
+    (await api.notificationTemplates.update(template.id, { status: 'archived' })).status,
+    'archived',
+  );
+  await api.notificationTemplates.update(template.id, { status: 'active' });
+  // SMTP points at the container's own localhost, so delivery fails without leaving the stack.
+  const queued = await api.notifications.queue({
+    org_id: organization.id,
+    template_id: template.id,
+    channel: 'email',
+    recipient: `notify-${id}@example.test`,
+    variables: { name: 'SDK' },
+  });
+  assert.equal(queued.template_id, template.id);
+  assert.match(queued.subject ?? '', /Welcome SDK/);
+  const notificationDetail = await api.notifications.get(queued.id);
+  assert.equal(notificationDetail.notification.id, queued.id);
+  assert.ok(
+    (await api.notifications.list({ channel: 'email' })).data.some((n) => n.id === queued.id),
+  );
+  assert.equal((await api.notifications.retry(queued.id)).attempt_count, 0);
+  passed('notification templates and notifications (create/get/update, queue/get/list/retry)');
+
+  const announcement = await api.applicationNotifications.create({
+    org_id: organization.id,
+    product_id: product.id,
+    title: `Maintenance ${id}`,
+    message: 'Scheduled maintenance tonight.',
+    severity: 'warning',
+    message_type: 'maintenance_notice',
+    status: 'active',
+  });
+  assert.equal(announcement.status, 'active');
+  assert.equal(announcement.audience.platforms, undefined);
+  const feed = await anonymous.applicationNotifications.feed({
+    license_key: license.license_key,
+    installation_id: `install-${id}`,
+  });
+  assert.ok(feed.some((item) => item.notification.id === announcement.id));
+  const ack = await anonymous.applicationNotifications.acknowledge(announcement.id, {
+    license_key: license.license_key,
+    installation_id: `install-${id}`,
+  });
+  assert.equal(ack.state, 'acknowledged');
+  const afterAck = await anonymous.applicationNotifications.feed({
+    license_key: license.license_key,
+    installation_id: `install-${id}`,
+  });
+  assert.equal(
+    afterAck.find((item) => item.notification.id === announcement.id)?.state?.state,
+    'acknowledged',
+  );
+  assert.equal(
+    (await api.applicationNotifications.update(announcement.id, { status: 'archived' })).status,
+    'archived',
+  );
+  passed('application notifications (create/update, license-key feed and ack)');
+
+  const release = await api.releases.create({
+    product_id: product.id,
+    version: '1.2.3',
+    channel: 'stable',
+    release_notes: 'SDK smoke release',
+  });
+  assert.equal(release.status, 'draft');
+  const bytes = new TextEncoder().encode(`sdk smoke artifact ${id}\n`);
+  const artifact = await api.releases.uploadArtifact(release.id, {
+    file: new Blob([bytes], { type: 'application/octet-stream' }),
+    filename: `app-${id}.bin`,
+    os: 'linux',
+    arch: 'amd64',
+  });
+  const expectedSha = createHash('sha256').update(bytes).digest('hex');
+  assert.equal(artifact.checksum_sha256, expectedSha);
+  assert.equal(artifact.file_size_bytes, bytes.length);
+  assert.equal((await api.releases.listArtifacts(release.id)).total, 1);
+  assert.equal((await api.releases.publish(release.id)).status, 'published');
+  const releaseDetail = await api.releases.get(release.id);
+  assert.equal(releaseDetail.release?.id, release.id);
+  assert.equal(releaseDetail.artifacts?.[0]?.id, artifact.id);
+  assert.equal((await anonymous.releases.checksum(artifact.id)).checksum_sha256, expectedSha);
+
+  const grant = await anonymous.releases.authorizeDownload({
+    license_key: license.license_key,
+    artifact_id: artifact.id,
+  });
+  const token = new URL(grant.url).pathname.split('/').pop();
+  const download = await anonymous.releases.download(token);
+  assert.equal(download.filename, `app-${id}.bin`);
+  assert.equal(download.checksumSha256, expectedSha);
+  const downloaded = new Uint8Array(await download.response.arrayBuffer());
+  assert.equal(createHash('sha256').update(downloaded).digest('hex'), expectedSha);
+  assert.equal((await api.releases.yank(release.id, { reason: 'sdk smoke' })).status, 'yanked');
+  assert.ok(
+    (await api.releases.list({ product_id: product.id })).data.some((r) => r.id === release.id),
+  );
+  passed(
+    'releases (create/upload/publish/get/checksum, license-authorized streamed download, yank)',
+  );
+}
+
 /** Every collection GET on the server; each must answer 200 for an org-scoped key. */
 const listRoutes = [
   'activations',
@@ -646,11 +800,17 @@ const listRoutes = [
   'webhook-events',
 ];
 
+/** GET with the server's per-key rate limit honoured via Retry-After, as the SDK does. */
 async function rawGet(path, apiKey) {
-  const response = await globalThis.fetch(`${baseUrl}/api/v1/${path}`, {
-    headers: { 'X-API-Key': apiKey },
-  });
-  return { status: response.status, text: await response.text() };
+  for (let attempt = 0; ; attempt++) {
+    const response = await globalThis.fetch(`${baseUrl}/api/v1/${path}`, {
+      headers: { 'X-API-Key': apiKey },
+    });
+    const text = await response.text();
+    if (response.status !== 429 || attempt === 3) return { status: response.status, text };
+    const seconds = Number(response.headers.get('retry-after')) || 1;
+    await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+  }
 }
 
 function hasStatus(status) {

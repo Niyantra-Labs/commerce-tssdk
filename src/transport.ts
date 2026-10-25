@@ -36,6 +36,8 @@ export interface RequestSpec {
   body?: unknown;
   /** Exact JSON bytes, for requests whose signature covers the body. */
   serializedBody?: string;
+  /** Multipart body; fetch sets the boundary in Content-Type. Never retried. */
+  formData?: FormData;
   kind?: ResponseKind;
   unauthenticated?: boolean;
   unprefixed?: boolean;
@@ -252,7 +254,9 @@ export class Transport {
       }
       if (value !== undefined) url.searchParams.set(key, String(value));
     }
-    let body: string | undefined = spec.serializedBody;
+    let body: string | FormData | undefined = spec.formData ?? spec.serializedBody;
+    if (spec.formData && (spec.serializedBody !== undefined || spec.body !== undefined))
+      throw new CommerceValidationError('A request has either a JSON or a multipart body');
     if (body === undefined && spec.body !== undefined) {
       assertSafeNumbers(spec.body);
       body = JSON.stringify(spec.body);
@@ -268,10 +272,13 @@ export class Transport {
       () => controller.abort(new CommerceTimeoutError('Request timed out')),
       timeout,
     );
-    const retryable = spec.retryable ?? spec.method === 'GET';
+    const retryable = !spec.formData && (spec.retryable ?? spec.method === 'GET');
+    // A raw (streamed) response outlives this call: keep honouring the
+    // caller's signal while the body is read. The timeout covers headers only.
+    let streaming = false;
     try {
       const headers = new Headers({ Accept: 'application/json' });
-      if (body !== undefined) headers.set('Content-Type', 'application/json');
+      if (typeof body === 'string') headers.set('Content-Type', 'application/json');
       if (options.requestId) headers.set('X-Request-ID', options.requestId);
       if (!spec.unauthenticated) {
         if ('apiKey' in this.auth) headers.set('X-API-Key', this.auth.apiKey!);
@@ -365,7 +372,10 @@ export class Transport {
           await response.body?.cancel();
           return undefined as T;
         }
-        if (spec.kind === 'raw') return response as T;
+        if (spec.kind === 'raw') {
+          streaming = true;
+          return response as T;
+        }
         if (!response.headers.get('content-type')?.includes('json'))
           throw new CommerceProtocolError('Expected JSON response');
         let parsed: unknown;
@@ -392,7 +402,7 @@ export class Transport {
       }
     } finally {
       clearTimeout(timer);
-      options.signal?.removeEventListener('abort', onAbort);
+      if (!streaming) options.signal?.removeEventListener('abort', onAbort);
     }
   }
 }

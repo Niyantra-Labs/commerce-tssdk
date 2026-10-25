@@ -807,3 +807,240 @@ export class CommissionPayoutService extends CollectionService<
     return this.action(id, 'reverse', input, options);
   }
 }
+
+/**
+ * Payment gateway configurations. Credentials are provider secrets: call these
+ * from a backend only. Responses never include stored credentials.
+ */
+export class GatewayConfigService extends ResourceService<
+  M.GatewayConfig,
+  M.GatewayConfigCreateParams,
+  M.GatewayConfigUpdateParams,
+  M.GatewayConfigListParams
+> {
+  constructor(http: Transport) {
+    super(http, '/gateway-configs');
+  }
+  /** Make this the organization's default gateway. */
+  setDefault(id: string, options?: RequestOptions): Promise<M.GatewayConfig> {
+    return this.action(id, 'set-default', undefined, options);
+  }
+  /** Check the stored credentials against the provider and record the health result. */
+  test(id: string, options?: RequestOptions): Promise<C.GatewayConfigTestResult> {
+    return this.http.request({ method: 'POST', path: `${this.item(id)}/test` }, options);
+  }
+}
+
+/** Supported payment providers and the credentials each one needs. */
+export class GatewayProviderService {
+  constructor(private readonly http: Transport) {}
+  list(options?: RequestOptions): Promise<ReadonlyArray<C.GatewayProvider>> {
+    return this.http.request({ method: 'GET', path: '/gateway-providers', kind: 'data' }, options);
+  }
+  schema(provider: string, options?: RequestOptions): Promise<C.GatewayProviderSchema> {
+    return this.http.request(
+      {
+        method: 'GET',
+        path: `/gateway-providers/${pathSegment(provider)}/schema`,
+        kind: 'data',
+      },
+      options,
+    );
+  }
+}
+
+/** Binary releases, their artifacts, and license-gated downloads. */
+export class ReleaseService extends CollectionService<
+  M.Release,
+  M.ReleaseListParams,
+  M.ReleaseDetail
+> {
+  constructor(http: Transport) {
+    super(http, '/releases');
+  }
+  create(input: M.ReleaseCreateParams, options?: RequestOptions): Promise<M.Release> {
+    return this.http.request(
+      { method: 'POST', path: '/releases', body: input, kind: 'data' },
+      options,
+    );
+  }
+  update(id: string, input: M.ReleaseUpdateParams, options?: RequestOptions): Promise<M.Release> {
+    return this.http.request(
+      { method: 'PATCH', path: this.item(id), body: input, kind: 'data' },
+      options,
+    );
+  }
+  delete(id: string, options?: RequestOptions): Promise<void> {
+    return this.http.request({ method: 'DELETE', path: this.item(id), kind: 'none' }, options);
+  }
+  publish(id: string, options?: RequestOptions): Promise<M.Release> {
+    return this.action(id, 'publish', undefined, options);
+  }
+  yank(id: string, input: { reason?: string } = {}, options?: RequestOptions): Promise<M.Release> {
+    return this.action(id, 'yank', input, options);
+  }
+  listArtifacts(id: string, options?: RequestOptions): Promise<M.ListResponse<M.ReleaseArtifact>> {
+    return this.http.request(
+      { method: 'GET', path: `${this.item(id)}/artifacts`, kind: 'list' },
+      options,
+    );
+  }
+  /** Upload an artifact as multipart form data. Not retried. */
+  uploadArtifact(
+    id: string,
+    input: M.ReleaseArtifactUploadParams,
+    options?: RequestOptions,
+  ): Promise<M.ReleaseArtifact> {
+    const form = new FormData();
+    if (input.os !== undefined) form.set('os', input.os);
+    if (input.arch !== undefined) form.set('arch', input.arch);
+    form.set('file', input.file, input.filename);
+    return this.http.request(
+      { method: 'POST', path: `${this.item(id)}/artifacts`, formData: form, kind: 'data' },
+      options,
+    );
+  }
+  /** Published checksums for an artifact; callable without credentials. */
+  checksum(artifactId: string, options?: RequestOptions): Promise<M.ReleaseArtifactChecksum> {
+    return this.http.request(
+      { method: 'GET', path: `/artifacts/${pathSegment(artifactId)}/checksum`, kind: 'data' },
+      options,
+    );
+  }
+  /** Exchange a license key for a short-lived download URL. */
+  authorizeDownload(
+    input: M.DownloadAuthorizeParams,
+    options?: RequestOptions,
+  ): Promise<M.AuthorizedDownload> {
+    return this.http.request(
+      { method: 'POST', path: '/downloads/authorize', body: input, kind: 'data' },
+      options,
+    );
+  }
+  /**
+   * Stream an authorized download by its token (the last path segment of
+   * `AuthorizedDownload.url`). The request timeout covers the response
+   * headers; abort with `options.signal` or `body.cancel()` while streaming.
+   */
+  async download(token: string, options?: RequestOptions): Promise<C.ReleaseDownload> {
+    const response: Response = await this.http.request(
+      {
+        method: 'GET',
+        path: `/downloads/${pathSegment(token)}`,
+        kind: 'raw',
+        unauthenticated: true,
+        headers: { Accept: '*/*' },
+      },
+      options,
+    );
+    const disposition = response.headers.get('content-disposition') ?? '';
+    const filename = /filename="([^"]*)"/.exec(disposition)?.[1];
+    const contentType = response.headers.get('content-type') ?? undefined;
+    const checksumSha256 = response.headers.get('x-checksum-sha256') ?? undefined;
+    return {
+      response,
+      body: response.body,
+      ...(contentType !== undefined && { contentType }),
+      ...(filename !== undefined && { filename }),
+      ...(checksumSha256 !== undefined && { checksumSha256 }),
+    };
+  }
+}
+
+/** Email/SMS templates rendered by the notification service. */
+export class NotificationTemplateService extends CollectionService<
+  M.NotificationTemplate,
+  M.NotificationTemplateListParams,
+  C.NotificationTemplateDetail
+> {
+  constructor(http: Transport) {
+    super(http, '/notification-templates');
+  }
+  create(
+    input: M.NotificationTemplateCreateParams,
+    options?: RequestOptions,
+  ): Promise<M.NotificationTemplate> {
+    return this.http.request(
+      { method: 'POST', path: '/notification-templates', body: input, kind: 'data' },
+      options,
+    );
+  }
+  update(
+    id: string,
+    input: M.NotificationTemplateUpdateParams,
+    options?: RequestOptions,
+  ): Promise<M.NotificationTemplate> {
+    return this.http.request(
+      { method: 'PATCH', path: this.item(id), body: input, kind: 'data' },
+      options,
+    );
+  }
+}
+
+/** Outbound email/SMS notifications and their delivery state. */
+export class NotificationService extends CollectionService<
+  M.Notification,
+  M.NotificationListParams,
+  C.NotificationDetail
+> {
+  constructor(http: Transport) {
+    super(http, '/notifications');
+  }
+  /** Queue a notification for asynchronous delivery. Not retried. */
+  queue(input: M.NotificationQueueParams, options?: RequestOptions): Promise<M.Notification> {
+    return this.http.request(
+      { method: 'POST', path: '/notifications', body: input, kind: 'data' },
+      options,
+    );
+  }
+  /** Re-queue delivery. The server allows this from any status, including delivered. */
+  retry(id: string, options?: RequestOptions): Promise<M.Notification> {
+    return this.action(id, 'retry', undefined, options);
+  }
+}
+
+/** In-app announcements and the feed installed software polls. */
+export class ApplicationNotificationService extends CollectionService<
+  M.ApplicationNotification,
+  M.ApplicationNotificationListParams
+> {
+  constructor(http: Transport) {
+    super(http, '/application-notifications');
+  }
+  create(
+    input: M.ApplicationNotificationCreateParams,
+    options?: RequestOptions,
+  ): Promise<M.ApplicationNotification> {
+    return this.http.request(
+      { method: 'POST', path: '/application-notifications', body: input, kind: 'data' },
+      options,
+    );
+  }
+  update(
+    id: string,
+    input: M.ApplicationNotificationUpdateParams,
+    options?: RequestOptions,
+  ): Promise<M.ApplicationNotification> {
+    return this.http.request(
+      { method: 'PATCH', path: this.item(id), body: input, kind: 'data' },
+      options,
+    );
+  }
+  /** Active notifications for one installation, with its read state. */
+  feed(
+    input: M.ApplicationNotificationFeedParams,
+    options?: RequestOptions,
+  ): Promise<ReadonlyArray<M.ApplicationNotificationFeedItem>> {
+    return this.http.request(
+      { method: 'POST', path: '/application-notifications/feed', body: input, kind: 'data' },
+      options,
+    );
+  }
+  acknowledge(
+    id: string,
+    input: M.ApplicationNotificationAckParams,
+    options?: RequestOptions,
+  ): Promise<M.ApplicationNotificationReadState> {
+    return this.action(id, 'ack', input, options);
+  }
+}

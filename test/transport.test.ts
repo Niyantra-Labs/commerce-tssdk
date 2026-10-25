@@ -215,3 +215,62 @@ describe('transport behavior', () => {
     await expect(collectAll(items(), 1)).rejects.toThrow('Pagination cap exceeded');
   });
 });
+
+describe('multipart and streamed responses', () => {
+  it('sends artifact uploads as multipart without a JSON content type and never retries them', async () => {
+    const fetcher = vi.fn(async (_url: URL | RequestInfo, init?: RequestInit) => {
+      expect(init?.body).toBeInstanceOf(FormData);
+      expect(new Headers(init?.headers).get('content-type')).toBeNull();
+      const form = init?.body as FormData;
+      expect(form.get('os')).toBe('linux');
+      expect((form.get('file') as File).name).toBe('app.bin');
+      return new Response(JSON.stringify({ error: { code: 'unavailable' } }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const client = new Client({ auth: { apiKey: 'secret' }, fetch: fetcher as typeof fetch });
+    await expect(
+      client.releases.uploadArtifact('rel_1', {
+        file: new Blob([new Uint8Array([1, 2, 3])]),
+        filename: 'app.bin',
+        os: 'linux',
+      }),
+    ).rejects.toBeInstanceOf(CommerceApiError);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('streams downloads unauthenticated and keeps honouring the caller signal while reading', async () => {
+    let fetchSignal: AbortSignal | undefined;
+    const fetcher = vi.fn(async (_url: URL | RequestInfo, init?: RequestInit) => {
+      fetchSignal = init?.signal ?? undefined;
+      expect(new Headers(init?.headers).get('x-api-key')).toBeNull();
+      return new Response(new ReadableStream({ start() {} }), {
+        headers: {
+          'content-type': 'application/octet-stream',
+          'content-disposition': 'attachment; filename="app.bin"',
+          'x-checksum-sha256': 'abc123',
+        },
+      });
+    });
+    const client = new Client({ auth: { apiKey: 'secret' }, fetch: fetcher as typeof fetch });
+    const controller = new AbortController();
+    const download = await client.releases.download('tok/en', { signal: controller.signal });
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain('/api/v1/downloads/tok%2Fen');
+    expect(download.filename).toBe('app.bin');
+    expect(download.checksumSha256).toBe('abc123');
+    expect(fetchSignal?.aborted).toBe(false);
+    controller.abort();
+    expect(fetchSignal?.aborted).toBe(true);
+    expect(fetchSignal?.reason).toBeInstanceOf(CommerceAbortError);
+  });
+
+  it('rejects a request that mixes JSON and multipart bodies', async () => {
+    const client = new Client({ auth: { apiKey: 'secret' }, fetch: vi.fn() as typeof fetch });
+    const http = (client as unknown as { http: { request: (spec: unknown) => Promise<unknown> } })
+      .http;
+    await expect(
+      http.request({ method: 'POST', path: '/x', body: {}, formData: new FormData() }),
+    ).rejects.toBeInstanceOf(CommerceValidationError);
+  });
+});

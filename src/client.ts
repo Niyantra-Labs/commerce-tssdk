@@ -22,6 +22,12 @@ import {
   ReferralEventService,
   SubscriptionService,
   SystemService,
+  GatewayConfigService,
+  GatewayProviderService,
+  ReleaseService,
+  NotificationTemplateService,
+  NotificationService,
+  ApplicationNotificationService,
   UsageService,
   WebhookEndpointService,
   WebhookEventService,
@@ -174,6 +180,24 @@ export class Client {
   }
   get system() {
     return new SystemService(this.http);
+  }
+  get gatewayConfigs() {
+    return new GatewayConfigService(this.http);
+  }
+  get gatewayProviders() {
+    return new GatewayProviderService(this.http);
+  }
+  get releases() {
+    return new ReleaseService(this.http);
+  }
+  get notificationTemplates() {
+    return new NotificationTemplateService(this.http);
+  }
+  get notifications() {
+    return new NotificationService(this.http);
+  }
+  get applicationNotifications() {
+    return new ApplicationNotificationService(this.http);
   }
   /** For signed usage reports; requires an API key with the usage:report scope. */
   get usageApiKey(): string | undefined {
