@@ -2,9 +2,14 @@
 // Review against Commerce server JSON before claiming contract parity.
 export type Metadata = Record<string, unknown>;
 export type Address = Record<string, unknown>;
-export interface ListParams {
+/** Pagination accepted by every list endpoint. */
+export interface PageParams {
   limit?: number;
   offset?: number;
+}
+
+/** Pagination plus the `search`/`status` filters most list handlers accept. */
+export interface ListParams extends PageParams {
   search?: string;
   status?: string;
 }
@@ -60,8 +65,8 @@ export interface DeactivateByKeyParams {
 }
 
 export interface ActivationListParams extends ListParams {
-  license_id?: string | null;
-  machine_id?: string | null;
+  license_id?: string;
+  machine_id?: string;
 }
 
 export interface Addon {
@@ -111,7 +116,7 @@ export interface AddonUpdateParams {
 }
 
 export interface AddonListParams extends ListParams {
-  product_id?: string | null;
+  product_id?: string;
 }
 
 export interface LicenseAddon {
@@ -144,7 +149,6 @@ export interface CommissionPlan {
   readonly recurring_cap_cents?: number | null;
   readonly applicable_products?: ReadonlyArray<string>;
   readonly status: string;
-  readonly metadata?: Metadata;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -154,14 +158,14 @@ export interface CommissionPlanCreateParams {
   name: string;
   description?: string | null;
   commission_type: string;
-  commission_value: number;
+  commission_value?: number;
   commission_currency?: string | null;
   tiers?: Metadata;
-  recurring?: boolean | null;
+  recurring?: boolean;
   recurring_months?: number | null;
   recurring_cap_cents?: number | null;
   applicable_products?: ReadonlyArray<string>;
-  metadata?: Metadata;
+  status?: string;
 }
 
 export interface CommissionPlanUpdateParams {
@@ -169,12 +173,13 @@ export interface CommissionPlanUpdateParams {
   description?: string | null;
   commission_type?: string | null;
   commission_value?: number | null;
+  commission_currency?: string | null;
   tiers?: Metadata;
   recurring?: boolean | null;
   recurring_months?: number | null;
   recurring_cap_cents?: number | null;
+  applicable_products?: ReadonlyArray<string>;
   status?: string | null;
-  metadata?: Metadata;
 }
 
 export type CommissionPlanListParams = ListParams;
@@ -188,7 +193,7 @@ export interface Affiliate {
   readonly company_name?: string | null;
   readonly website?: string | null;
   readonly account_id?: string | null;
-  readonly commission_plan_id: string;
+  readonly commission_plan_id?: string | null;
   readonly status: string;
   readonly approved_at?: string | null;
   readonly approved_by?: string | null;
@@ -199,18 +204,18 @@ export interface Affiliate {
   readonly payout_method?: string | null;
   readonly payout_details?: Metadata;
   readonly promotional_assets?: Metadata;
-  readonly clicks: number;
-  readonly unique_clicks: number;
-  readonly signups: number;
-  readonly purchases: number;
-  readonly earnings_cents: number;
-  readonly paid_cents: number;
+  readonly total_clicks: number;
+  readonly total_signups: number;
+  readonly total_purchases: number;
+  readonly total_earned_cents: number;
+  readonly total_paid_cents: number;
   readonly restricted_products?: ReadonlyArray<string>;
   readonly restricted_geos?: ReadonlyArray<string>;
   readonly notes?: string | null;
   readonly metadata?: Metadata;
   readonly created_at: string;
   readonly updated_at: string;
+  readonly deleted_at?: string | null;
 }
 
 export interface AffiliateCreateParams {
@@ -239,36 +244,46 @@ export interface AffiliateUpdateParams {
   phone?: string | null;
   company_name?: string | null;
   website?: string | null;
+  account_id?: string | null;
   commission_plan_id?: string | null;
   payout_threshold_cents?: number | null;
   payout_currency?: string | null;
   payout_method?: string | null;
   payout_details?: Metadata;
+  promotional_assets?: Metadata;
+  restricted_products?: ReadonlyArray<string>;
+  restricted_geos?: ReadonlyArray<string>;
   notes?: string | null;
   metadata?: Metadata;
 }
 
+/**
+ * `approved_by` is stored only when it is the ID of a built-in-auth account;
+ * identities from an external IdP leave it empty.
+ */
 export interface AffiliateApproveParams {
-  approved_by: string;
+  approved_by?: string;
 }
 
 export interface AffiliateRejectParams {
   reason: string;
 }
 
-export type AffiliateListParams = ListParams;
+export interface AffiliateListParams extends ListParams {
+  commission_plan_id?: string;
+}
 
 export interface AffiliateLink {
   readonly id: string;
   readonly affiliate_id: string;
-  readonly product_id: string;
+  readonly product_id?: string | null;
   readonly slug: string;
-  readonly destination_url: string;
+  readonly destination_url?: string | null;
   readonly campaign?: string | null;
   readonly source?: string | null;
   readonly medium?: string | null;
   readonly click_count: number;
-  readonly unique_click_count: number;
+  readonly unique_clicks: number;
   readonly signup_count: number;
   readonly purchase_count: number;
   readonly status: string;
@@ -279,9 +294,9 @@ export interface AffiliateLink {
 
 export interface AffiliateLinkCreateParams {
   affiliate_id: string;
-  product_id: string;
-  slug: string;
-  destination_url: string;
+  product_id?: string | null;
+  slug?: string;
+  destination_url?: string | null;
   campaign?: string | null;
   source?: string | null;
   medium?: string | null;
@@ -289,6 +304,7 @@ export interface AffiliateLinkCreateParams {
 }
 
 export interface AffiliateLinkUpdateParams {
+  product_id?: string | null;
   destination_url?: string | null;
   campaign?: string | null;
   source?: string | null;
@@ -297,13 +313,14 @@ export interface AffiliateLinkUpdateParams {
 }
 
 export interface AffiliateLinkListParams extends ListParams {
-  affiliate_id?: string | null;
+  affiliate_id?: string;
+  product_id?: string;
 }
 
 export interface AffiliateEvent {
   readonly id: string;
   readonly affiliate_id: string;
-  readonly link_id: string;
+  readonly link_id?: string | null;
   readonly customer_id?: string | null;
   readonly order_id?: string | null;
   readonly event_type: string;
@@ -325,16 +342,27 @@ export interface AffiliateEvent {
 export interface AffiliateEventCreateParams {
   affiliate_id: string;
   link_id?: string | null;
-  event_type: string;
   customer_id?: string | null;
   order_id?: string | null;
+  event_type: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  referrer_url?: string | null;
+  country_code?: string | null;
+  session_id?: string | null;
+  order_amount_cents?: number | null;
+  commission_cents?: number | null;
+  is_suspicious?: boolean;
+  fraud_flags?: ReadonlyArray<string>;
   metadata?: Metadata;
 }
 
-export interface AffiliateEventListParams extends ListParams {
-  affiliate_id?: string | null;
-  link_id?: string | null;
-  event_type?: string | null;
+/** The affiliate-events handler accepts no `search` or `status` filter. */
+export interface AffiliateEventListParams extends PageParams {
+  affiliate_id?: string;
+  link_id?: string;
+  event_type?: string;
+  reviewed?: boolean;
 }
 
 export interface AffiliateEventReviewParams {
@@ -376,18 +404,28 @@ export interface CommissionPayoutCreateParams {
   payee_id: string;
   period_start: string;
   period_end: string;
-  currency: string;
+  amount_cents: number;
+  currency?: string;
+  line_items?: Metadata;
+  total_orders?: number;
+  total_revenue_cents?: number;
   notes?: string | null;
   metadata?: Metadata;
 }
 
-export interface CommissionPayoutListParams extends ListParams {
-  payee_type?: string | null;
-  payee_id?: string | null;
+/** The commission-payouts handler accepts no `search` filter. */
+export interface CommissionPayoutListParams extends PageParams {
+  status?: string;
+  payee_type?: string;
+  payee_id?: string;
 }
 
+/**
+ * `approved_by` is stored only when it is the ID of a built-in-auth account;
+ * identities from an external IdP leave it empty.
+ */
 export interface CommissionPayoutApproveParams {
-  approved_by: string;
+  approved_by?: string;
 }
 
 export interface CommissionPayoutPayParams {
@@ -435,7 +473,7 @@ export interface ApplicationUpdateParams {
 
 export interface ApplicationListParams extends ListParams {
   org_id?: string;
-  product_id?: string | null;
+  product_id?: string;
   environment?: string;
   status?: string;
 }
@@ -475,7 +513,7 @@ export interface APIKeyCreateParams {
 }
 
 export interface APIKeyListParams extends ListParams {
-  application_id?: string | null;
+  application_id?: string;
   environment?: string;
   status?: string;
 }
@@ -507,12 +545,12 @@ export interface AuditLog {
 }
 
 export interface AuditLogListParams extends ListParams {
-  action?: string | null;
-  target_type?: string | null;
-  target_id?: string | null;
-  actor_id?: string | null;
-  severity?: string | null;
-  category?: string | null;
+  action?: string;
+  target_type?: string;
+  target_id?: string;
+  actor_id?: string;
+  severity?: string;
+  category?: string;
 }
 
 export interface SigningKeyResponse {
@@ -646,8 +684,8 @@ export interface EntitlementUpdateParams {
 }
 
 export interface EntitlementListParams extends ListParams {
-  product_id?: string | null;
-  plan_id?: string | null;
+  product_id?: string;
+  plan_id?: string;
 }
 
 export interface EntitlementOverrideParams {
@@ -694,8 +732,8 @@ export interface Invoice {
 }
 
 export interface InvoiceListParams extends ListParams {
-  customer_id?: string | null;
-  subscription_id?: string | null;
+  customer_id?: string;
+  subscription_id?: string;
 }
 
 export interface License {
@@ -758,8 +796,8 @@ export interface LicenseUpdateParams {
 }
 
 export interface LicenseListParams extends ListParams {
-  product_id?: string | null;
-  customer_id?: string | null;
+  product_id?: string;
+  customer_id?: string;
 }
 
 export interface LicenseRevokeParams {
@@ -879,8 +917,8 @@ export interface OfflineCertificateVerifyResponse {
 }
 
 export interface OfflineCertificateListParams extends ListParams {
-  license_id?: string | null;
-  machine_id?: string | null;
+  license_id?: string;
+  machine_id?: string;
 }
 
 export interface OfflineCertificateRevokeParams {
@@ -948,8 +986,8 @@ export interface OrderUpdateParams {
 }
 
 export interface OrderListParams extends ListParams {
-  customer_id?: string | null;
-  product_id?: string | null;
+  customer_id?: string;
+  product_id?: string;
 }
 
 export interface Organization {
@@ -1031,7 +1069,7 @@ export interface Payment {
 }
 
 export interface PaymentListParams extends ListParams {
-  order_id?: string | null;
+  order_id?: string;
 }
 
 export interface PaymentRefundParams {
@@ -1116,7 +1154,7 @@ export interface PlanUpdateParams {
 }
 
 export interface PlanListParams extends ListParams {
-  product_id?: string | null;
+  product_id?: string;
 }
 
 export interface PlanCompareParams {
@@ -1183,8 +1221,10 @@ export interface ReferralProgram {
   readonly reward_type: string;
   readonly reward_value: number;
   readonly reward_currency?: string | null;
+  readonly reward_max_amount_cents?: number | null;
   readonly referrer_reward_type?: string | null;
   readonly referrer_reward_value?: number | null;
+  readonly referrer_reward_currency?: string | null;
   readonly max_uses_per_referrer?: number | null;
   readonly max_total_uses?: number | null;
   readonly total_uses: number;
@@ -1196,7 +1236,6 @@ export interface ReferralProgram {
   readonly valid_from?: string | null;
   readonly valid_until?: string | null;
   readonly status: string;
-  readonly metadata?: Metadata;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -1205,11 +1244,35 @@ export interface ReferralProgramCreateParams {
   org_id: string;
   name: string;
   description?: string | null;
-  reward_type: string;
-  reward_value: number;
+  reward_type?: string;
+  reward_value?: number;
   reward_currency?: string | null;
+  reward_max_amount_cents?: number | null;
   referrer_reward_type?: string | null;
   referrer_reward_value?: number | null;
+  referrer_reward_currency?: string | null;
+  max_uses_per_referrer?: number | null;
+  max_total_uses?: number | null;
+  applicable_products?: ReadonlyArray<string>;
+  min_order_cents?: number | null;
+  require_purchase?: boolean;
+  cooldown_days?: number | null;
+  rules?: Metadata;
+  valid_from?: string | null;
+  valid_until?: string | null;
+  status?: string;
+}
+
+export interface ReferralProgramUpdateParams {
+  name?: string | null;
+  description?: string | null;
+  reward_type?: string | null;
+  reward_value?: number | null;
+  reward_currency?: string | null;
+  reward_max_amount_cents?: number | null;
+  referrer_reward_type?: string | null;
+  referrer_reward_value?: number | null;
+  referrer_reward_currency?: string | null;
   max_uses_per_referrer?: number | null;
   max_total_uses?: number | null;
   applicable_products?: ReadonlyArray<string>;
@@ -1219,23 +1282,13 @@ export interface ReferralProgramCreateParams {
   rules?: Metadata;
   valid_from?: string | null;
   valid_until?: string | null;
-  metadata?: Metadata;
-}
-
-export interface ReferralProgramUpdateParams {
-  name?: string | null;
-  description?: string | null;
-  reward_type?: string | null;
-  reward_value?: number | null;
-  referrer_reward_type?: string | null;
-  referrer_reward_value?: number | null;
-  max_uses_per_referrer?: number | null;
-  max_total_uses?: number | null;
   status?: string | null;
-  metadata?: Metadata;
 }
 
-export type ReferralProgramListParams = ListParams;
+/** The referral-programs handler accepts no `search` filter. */
+export interface ReferralProgramListParams extends PageParams {
+  status?: string;
+}
 
 export interface ReferralCode {
   readonly id: string;
@@ -1248,7 +1301,6 @@ export interface ReferralCode {
   readonly max_uses?: number | null;
   readonly status: string;
   readonly expires_at?: string | null;
-  readonly metadata?: Metadata;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -1257,15 +1309,16 @@ export interface ReferralCodeCreateParams {
   program_id: string;
   referrer_id: string;
   referrer_type: string;
-  code?: string | null;
+  code?: string;
   landing_url?: string | null;
   max_uses?: number | null;
   expires_at?: string | null;
-  metadata?: Metadata;
 }
 
-export interface ReferralCodeListParams extends ListParams {
-  program_id?: string | null;
+/** The referral-codes handler accepts no `search` or `status` filter. */
+export interface ReferralCodeListParams extends PageParams {
+  program_id?: string;
+  referrer_id?: string;
 }
 
 export interface ReferralEvent {
@@ -1275,26 +1328,32 @@ export interface ReferralEvent {
   readonly attributed_order_id?: string | null;
   readonly status: string;
   readonly referrer_reward_issued: boolean;
+  readonly referrer_reward_amount_cents?: number | null;
   readonly referred_reward_issued: boolean;
-  readonly reward_amount_cents?: number | null;
+  readonly referred_reward_amount_cents?: number | null;
   readonly qualified_at?: string | null;
   readonly rewarded_at?: string | null;
   readonly rejected_at?: string | null;
-  readonly rejection_reason?: string | null;
+  readonly rejected_reason?: string | null;
   readonly ip_address?: string | null;
   readonly user_agent?: string | null;
   readonly metadata?: Metadata;
   readonly created_at: string;
+  readonly updated_at: string;
 }
 
 export interface ReferralEventCreateParams {
   code_id: string;
-  referred_customer_id: string;
+  referred_customer_id?: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
   metadata?: Metadata;
 }
 
-export interface ReferralEventListParams extends ListParams {
-  code_id?: string | null;
+/** The referral-events handler accepts no `search` filter. */
+export interface ReferralEventListParams extends PageParams {
+  code_id?: string;
+  status?: string;
 }
 
 export interface ReferralEventQualifyParams {
@@ -1351,15 +1410,15 @@ export interface SubscriptionCreateParams {
   customer_id: string;
   product_id: string;
   plan_id: string;
-  gateway?: string | null;
-  gateway_customer_id?: string | null;
-  quantity?: number | null;
+  quantity?: number;
   trial_days?: number | null;
-  proration_behavior?: string | null;
+  gateway?: string | null;
+  gateway_subscription_id?: string | null;
+  gateway_customer_id?: string | null;
+  proration_behavior?: string;
   billing_anchor?: string | null;
   bundle_product_ids?: ReadonlyArray<string>;
-  grace_days?: number | null;
-  metadata?: Metadata;
+  grace_days?: number;
 }
 
 export interface SubscriptionUpdateParams {
@@ -1371,9 +1430,9 @@ export interface SubscriptionUpdateParams {
 }
 
 export interface SubscriptionListParams extends ListParams {
-  customer_id?: string | null;
-  product_id?: string | null;
-  plan_id?: string | null;
+  customer_id?: string;
+  product_id?: string;
+  plan_id?: string;
 }
 
 export interface SubscriptionRenewParams {
@@ -1468,9 +1527,9 @@ export interface UsageMeterUpdateParams {
 }
 
 export interface UsageMeterListParams extends ListParams {
-  product_id?: string | null;
-  billing_model?: string | null;
-  reset_period?: string | null;
+  product_id?: string;
+  billing_model?: string;
+  reset_period?: string;
 }
 
 export interface UsageReport {
@@ -1609,8 +1668,8 @@ export interface WebhookEvent {
 }
 
 export interface WebhookEventListParams extends ListParams {
-  endpoint_id?: string | null;
-  event_type?: string | null;
+  endpoint_id?: string;
+  event_type?: string;
 }
 
 export interface WebhookEventEnvelope {

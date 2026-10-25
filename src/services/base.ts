@@ -1,10 +1,10 @@
-import type { ListParams, ListResponse } from '../models/generated.js';
+import type { ListResponse, PageParams } from '../models/generated.js';
 import { CommerceProtocolError } from '../errors.js';
 import type { RequestOptions, ResponseKind } from '../transport.js';
 import { pathSegment, Transport } from '../transport.js';
 
 /** Shared read/list behavior for a collection. */
-export class CollectionService<R, List extends ListParams = ListParams, Detail = R> {
+export class CollectionService<R, List extends PageParams = PageParams, Detail = R> {
   constructor(
     protected readonly http: Transport,
     protected readonly path: string,
@@ -70,7 +70,7 @@ export class ResourceService<
   R,
   Create,
   Update,
-  List extends ListParams = ListParams,
+  List extends PageParams = PageParams,
   CreateResult = R,
   Detail = R,
 > extends CollectionService<R, List, Detail> {

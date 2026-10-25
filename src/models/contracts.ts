@@ -153,6 +153,11 @@ export interface MachineDetail extends Go.Machine {
 }
 /** The server returns a flattened API key with a one-time secret. */
 export type ApiKeySecretResult = Go.APIKey & { readonly secret_key: string };
+/**
+ * `GET /plans/compare` matrix over a product's active plans. `features` and
+ * `limits` are `null` (not `[]`) when no compared plan defines any; `pricing`
+ * always contains at least the "Price" row.
+ */
 export interface PlanComparison {
   readonly plans: ReadonlyArray<{
     readonly id: string;
@@ -168,13 +173,13 @@ export interface PlanComparison {
       readonly enabled: boolean;
       readonly value: string;
     }>;
-  }>;
+  }> | null;
   readonly limits: ReadonlyArray<{
     readonly key: string;
     readonly label: string;
     readonly unit?: string;
     readonly values: ReadonlyArray<{ readonly plan_id: string; readonly value: string }>;
-  }>;
+  }> | null;
   readonly pricing: ReadonlyArray<{
     readonly label: string;
     readonly values: ReadonlyArray<string>;

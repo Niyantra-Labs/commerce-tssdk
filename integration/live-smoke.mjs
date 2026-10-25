@@ -313,6 +313,8 @@ async function main() {
   assert.equal(rejected.status, 'rejected');
   passed('affiliate create/reject (requires a JSON body on the server)');
 
+  await domainLifecycles({ api: authenticated, organization, product, customer });
+
   await tenantIsolation({
     organization,
     authenticated,
@@ -337,6 +339,272 @@ async function main() {
     license,
     affiliate,
   });
+}
+
+/**
+ * Plan comparison, subscription, affiliate, commission payout, and referral
+ * lifecycles, all through an org-scoped API key so the tenant guard is
+ * exercised on every legitimate call.
+ */
+async function domainLifecycles({ api, organization, product, customer }) {
+  const id = randomUUID().slice(0, 8);
+
+  const basic = await api.plans.create({
+    product_id: product.id,
+    name: 'Basic',
+    slug: `basic-${id}`,
+    plan_type: 'subscription',
+    billing_interval: 'monthly',
+    price_cents: 1000,
+    currency: 'USD',
+  });
+  // Plans are created as drafts; only active plans are compared or sold.
+  assert.equal(basic.status, 'draft');
+  assert.equal((await api.plans.update(basic.id, { status: 'active' })).status, 'active');
+  let comparison = await api.plans.compare(product.id);
+  assert.equal(comparison.features, null);
+  assert.equal(comparison.limits, null);
+  assert.equal(comparison.pricing[0]?.label, 'Price');
+  const pro = await api.plans.create({
+    product_id: product.id,
+    name: 'Pro',
+    slug: `pro-${id}`,
+    plan_type: 'subscription',
+    billing_interval: 'monthly',
+    price_cents: 5000,
+    currency: 'USD',
+    seat_based: true,
+    seat_price_cents: 500,
+    min_seats: 1,
+    max_seats: 10,
+    features: { sso: true },
+    limits: { api_calls: -1 },
+  });
+  await api.plans.update(pro.id, { status: 'active' });
+  comparison = await api.plans.compare(product.id);
+  assert.deepEqual(comparison.plans.map((plan) => plan.id).sort(), [basic.id, pro.id].sort());
+  const sso = comparison.features?.find((row) => row.key === 'sso');
+  assert.equal(sso?.values.find((cell) => cell.plan_id === pro.id)?.enabled, true);
+  assert.equal(sso?.values.find((cell) => cell.plan_id === basic.id)?.enabled, false);
+  const apiCalls = comparison.limits?.find((row) => row.key === 'api_calls');
+  assert.equal(apiCalls?.values.find((cell) => cell.plan_id === pro.id)?.value, 'Unlimited');
+  passed('plan compare (null features/limits, then populated matrix)');
+
+  const created = await api.subscriptions.create({
+    customer_id: customer.id,
+    product_id: product.id,
+    plan_id: basic.id,
+    quantity: 1,
+  });
+  const subscription = created.subscription;
+  assert.ok(subscription.id);
+  const detail = await api.subscriptions.get(subscription.id);
+  assert.equal(detail.subscription.id, subscription.id);
+  assert.equal(detail.plan_name, 'Basic');
+  const paused = await api.subscriptions.pause(subscription.id, { reason: 'sdk smoke' });
+  assert.equal(paused.status, 'paused');
+  const resumed = await api.subscriptions.resume(subscription.id, {});
+  assert.equal(resumed.status, subscription.status);
+  const renewed = await api.subscriptions.renew(subscription.id, { periods: 1 });
+  assert.ok(
+    Date.parse(renewed.subscription.current_period_end) >
+      Date.parse(subscription.current_period_end),
+  );
+  const changed = await api.subscriptions.changePlan(subscription.id, {
+    plan_id: pro.id,
+    proration_behavior: 'create_prorations',
+  });
+  assert.equal(changed.subscription.plan_id, pro.id);
+  const seats = await api.subscriptions.updateSeats(subscription.id, {
+    quantity: 3,
+    proration_behavior: 'create_prorations',
+  });
+  assert.equal(seats.subscription.quantity, 3);
+  const canceled = await api.subscriptions.cancel(subscription.id, {
+    at_period_end: false,
+    reason: 'sdk smoke',
+  });
+  assert.ok(canceled.canceled_at);
+  passed('subscription lifecycle (create/get/pause/resume/renew/change-plan/seats/cancel)');
+
+  const planA = await api.commissionPlans.create({
+    org_id: organization.id,
+    name: `Plan A ${id}`,
+    commission_type: 'percentage',
+    commission_value: 10,
+  });
+  const planB = await api.commissionPlans.create({
+    org_id: organization.id,
+    name: `Plan B ${id}`,
+    commission_type: 'percentage',
+    commission_value: 20,
+  });
+  const affiliate = await api.affiliates.create({
+    org_id: organization.id,
+    name: `Affiliate A ${id}`,
+    email: `aff-a-${id}@example.test`,
+    commission_plan_id: planA.id,
+  });
+  const otherAffiliate = await api.affiliates.create({
+    org_id: organization.id,
+    name: `Affiliate B ${id}`,
+    email: `aff-b-${id}@example.test`,
+    commission_plan_id: planB.id,
+  });
+  const byPlan = await api.affiliates.list({ commission_plan_id: planB.id });
+  assert.deepEqual(
+    byPlan.data.map((item) => item.id),
+    [otherAffiliate.id],
+  );
+  const approved = await api.affiliates.approve(affiliate.id, {});
+  assert.equal(approved.status, 'approved');
+  assert.equal(typeof approved.total_clicks, 'number');
+  passed('affiliate list filter (commission_plan_id) and approve');
+
+  const link = await api.affiliateLinks.create({
+    affiliate_id: affiliate.id,
+    product_id: product.id,
+    destination_url: 'https://example.test/product',
+  });
+  const genericLink = await api.affiliateLinks.create({
+    affiliate_id: affiliate.id,
+    destination_url: 'https://example.test/home',
+  });
+  const productLinks = await api.affiliateLinks.list({ product_id: product.id });
+  assert.ok(productLinks.data.some((item) => item.id === link.id));
+  assert.ok(!productLinks.data.some((item) => item.id === genericLink.id));
+  assert.equal(typeof link.unique_clicks, 'number');
+
+  const event = await api.affiliateEvents.create({
+    affiliate_id: affiliate.id,
+    link_id: link.id,
+    event_type: 'click',
+  });
+  const unreviewed = await api.affiliateEvents.list({
+    affiliate_id: affiliate.id,
+    reviewed: false,
+  });
+  assert.ok(unreviewed.data.some((item) => item.id === event.id));
+  const reviewed = await api.affiliateEvents.review(event.id, { reviewed_by: 'sdk-smoke' });
+  assert.equal(reviewed.reviewed, true);
+  const reviewedList = await api.affiliateEvents.list({
+    affiliate_id: affiliate.id,
+    reviewed: true,
+  });
+  assert.ok(reviewedList.data.some((item) => item.id === event.id));
+  passed('affiliate links (product_id filter) and events (reviewed filter, review)');
+
+  const newPayout = () =>
+    api.commissionPayouts.create({
+      org_id: organization.id,
+      payee_type: 'affiliate',
+      payee_id: affiliate.id,
+      period_start: '2026-09-01T00:00:00Z',
+      period_end: '2026-10-01T00:00:00Z',
+      amount_cents: 2500,
+      currency: 'USD',
+      total_orders: 1,
+      total_revenue_cents: 25000,
+    });
+  const payout = await newPayout();
+  assert.equal(payout.status, 'pending');
+  await assert.rejects(
+    () => api.commissionPayouts.pay(payout.id, { payment_method: 'bank_transfer' }),
+    (error) => error.status === 409 && error.code === 'invalid_transition',
+  );
+  assert.equal((await api.commissionPayouts.approve(payout.id, {})).status, 'approved');
+  const paid = await api.commissionPayouts.pay(payout.id, {
+    payment_method: 'bank_transfer',
+    payment_reference: `ref-${id}`,
+  });
+  assert.equal(paid.status, 'paid');
+  assert.equal(paid.payment_reference, `ref-${id}`);
+  assert.equal(
+    (await api.commissionPayouts.reverse(payout.id, { reason: 'sdk smoke' })).status,
+    'reversed',
+  );
+  const failedPayout = await newPayout();
+  await api.commissionPayouts.approve(failedPayout.id, {});
+  assert.equal(
+    (await api.commissionPayouts.fail(failedPayout.id, { reason: 'bank rejected' })).status,
+    'failed',
+  );
+  await assert.rejects(
+    () => api.commissionPayouts.reverse(failedPayout.id, { reason: 'too late' }),
+    (error) => error.status === 409,
+  );
+  const reversedPayouts = await api.commissionPayouts.list({
+    payee_id: affiliate.id,
+    status: 'reversed',
+  });
+  assert.deepEqual(
+    reversedPayouts.data.map((item) => item.id),
+    [payout.id],
+  );
+  passed('commission payouts (approve/pay/reverse, approve/fail, 409 on invalid transitions)');
+
+  const program = await api.referralPrograms.create({
+    org_id: organization.id,
+    name: `Referral ${id}`,
+    reward_type: 'credit',
+    reward_value: 500,
+  });
+  assert.equal(program.referrer_reward_type, 'credit');
+  const code = await api.referralCodes.create({
+    program_id: program.id,
+    referrer_id: customer.id,
+    referrer_type: 'customer',
+  });
+  assert.equal(code.code.length, 8);
+  const codes = await api.referralCodes.list({ referrer_id: customer.id });
+  assert.ok(codes.data.some((item) => item.id === code.id));
+
+  const referred = await api.customers.create({
+    org_id: organization.id,
+    name: `Referred ${id}`,
+    email: `referred-${id}@example.test`,
+    currency: 'USD',
+  });
+  const first = await api.referralEvents.create({
+    code_id: code.id,
+    referred_customer_id: referred.id,
+  });
+  assert.equal(first.status, 'pending');
+  assert.equal((await api.referralEvents.qualify(first.id, {})).status, 'qualified');
+  const rewarded = await api.referralEvents.reward(first.id, {
+    referrer_reward_amount_cents: 500,
+    referred_reward_amount_cents: 250,
+  });
+  assert.equal(rewarded.status, 'rewarded');
+  assert.equal(rewarded.referrer_reward_amount_cents, 500);
+  await assert.rejects(
+    () => api.referralEvents.reject(first.id, { reason: 'too late' }),
+    (error) => error.status === 409,
+  );
+  // A customer can be referred only once per program.
+  const secondReferred = await api.customers.create({
+    org_id: organization.id,
+    name: `Referred two ${id}`,
+    email: `referred-two-${id}@example.test`,
+    currency: 'USD',
+  });
+  const second = await api.referralEvents.create({
+    code_id: code.id,
+    referred_customer_id: secondReferred.id,
+  });
+  const rejected = await api.referralEvents.reject(second.id, { reason: 'duplicate' });
+  assert.equal(rejected.status, 'rejected');
+  assert.equal(rejected.rejected_reason, 'duplicate');
+  await assert.rejects(
+    () => api.referralEvents.qualify(second.id, {}),
+    (error) => error.status === 409,
+  );
+  const rewardedEvents = await api.referralEvents.list({ code_id: code.id, status: 'rewarded' });
+  assert.deepEqual(
+    rewardedEvents.data.map((item) => item.id),
+    [first.id],
+  );
+  passed('referral program/code/events (qualify/reward/reject, 409 on invalid transitions)');
 }
 
 /** Every collection GET on the server; each must answer 200 for an org-scoped key. */

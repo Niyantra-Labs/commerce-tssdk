@@ -196,3 +196,45 @@ describe('Phase 1 server contracts', () => {
     expect(await asResult(Promise.resolve(42))).toEqual({ ok: true, value: 42 });
   });
 });
+
+describe('affiliate and referral list filters', () => {
+  const capture = () => {
+    const urls: string[] = [];
+    const client = new Client({
+      auth: { apiKey: 'sk_test' },
+      fetch: async (url) => {
+        urls.push(String(url));
+        return json({ data: [], total: 0 });
+      },
+    });
+    return { client, urls };
+  };
+
+  it('sends reviewed=false instead of dropping a false boolean filter', async () => {
+    const { client, urls } = capture();
+    await client.affiliateEvents.list({ affiliate_id: 'aff_1', reviewed: false });
+    const query = new URL(urls[0] ?? '').searchParams;
+    expect(query.get('reviewed')).toBe('false');
+    expect(query.get('affiliate_id')).toBe('aff_1');
+  });
+
+  it('sends the server-supported affiliate filters', async () => {
+    const { client, urls } = capture();
+    await client.affiliates.list({ commission_plan_id: 'cp_1', status: 'approved' });
+    await client.affiliateLinks.list({ product_id: 'prod_1' });
+    expect(new URL(urls[0] ?? '').searchParams.get('commission_plan_id')).toBe('cp_1');
+    expect(new URL(urls[1] ?? '').searchParams.get('product_id')).toBe('prod_1');
+  });
+
+  it('only accepts filters the handlers read', async () => {
+    const { client } = capture();
+    // These handlers ignore search/status, so the types reject them.
+    // @ts-expect-error referral codes accept no search filter
+    await client.referralCodes.list({ search: 'x' });
+    // @ts-expect-error affiliate events accept no status filter
+    await client.affiliateEvents.list({ status: 'x' });
+    // A null filter is a type error and, if forced through, fails before any request.
+    // @ts-expect-error list filters are never null
+    await expect(client.licenses.list({ product_id: null })).rejects.toThrow(/cannot be null/);
+  });
+});
