@@ -9,7 +9,23 @@ import { Client, OfflineVerifier, WebhookVerifier } from '../dist/index.js';
 
 const baseUrl = process.env.COMMERCE_TEST_URL ?? 'http://127.0.0.1:19094';
 const suffix = randomUUID().slice(0, 12);
-const client = new Client({ baseUrl, auth: { apiKey: 'sdk-smoke-bootstrap' } });
+/** Adds trusted-proxy identity headers, as oauth2-proxy does for the admin UI. */
+function withIdentity(headers) {
+  return (input, init = {}) => {
+    const merged = new globalThis.Headers(init.headers);
+    for (const [key, value] of Object.entries(headers)) merged.set(key, value);
+    return globalThis.fetch(input, { ...init, headers: merged });
+  };
+}
+
+// Platform operator: unscoped identity holding the configured operator role.
+const client = new Client({
+  baseUrl,
+  auth: { apiKey: 'sdk-smoke-operator-has-no-key' },
+  fetch: withIdentity({ 'X-User-ID': 'sdk-smoke-operator', 'X-Roles': 'commerce:admin' }),
+});
+// No credentials at all: only public routes may answer.
+const anonymous = new Client({ baseUrl, auth: { apiKey: 'not-a-real-key' } });
 
 function passed(name) {
   console.log(`PASS ${name}`);
@@ -42,7 +58,7 @@ async function listen(server) {
 }
 
 async function main() {
-  const health = await client.system.health();
+  const health = await anonymous.system.health();
   assert.equal(health.status, 'ok');
   passed('health');
 
@@ -107,9 +123,9 @@ async function main() {
   assert.ok(license.id);
   passed('license create');
 
-  const validation = await client.licenses.validate({ license_key: license.license_key });
+  const validation = await anonymous.licenses.validate({ license_key: license.license_key });
   assert.equal(validation.valid, true);
-  const invalid = await client.licenses.validate({ license_key: `missing-${suffix}` });
+  const invalid = await anonymous.licenses.validate({ license_key: `missing-${suffix}` });
   assert.equal(invalid.valid, false);
   passed('license validate');
 
@@ -138,7 +154,7 @@ async function main() {
   passed('signed usage report');
 
   const fingerprint = `sdk-machine-${suffix}`;
-  const activated = await client.activations.activate({
+  const activated = await anonymous.activations.activate({
     license_key: license.license_key,
     fingerprint,
     hostname: `sdk-host-${suffix}`,
@@ -229,7 +245,7 @@ async function main() {
   assert.ok(issued.signature);
   passed('offline certificate issue');
 
-  const onlineVerify = await client.offlineCertificates.verify({
+  const onlineVerify = await anonymous.offlineCertificates.verify({
     certificate: issued.certificate.certificate,
     fingerprint,
   });
@@ -245,7 +261,7 @@ async function main() {
   assert.equal(mismatchVerify.error_code, 'machine_mismatch');
   passed('offline certificate online verify (fingerprint mismatch)');
 
-  const signingKey = await client.system.signingKey();
+  const signingKey = await anonymous.system.signingKey();
   assert.equal(signingKey.algorithm, 'Ed25519');
   const offlineVerifier = new OfflineVerifier(signingKey.public_key);
 
@@ -296,6 +312,199 @@ async function main() {
   });
   assert.equal(rejected.status, 'rejected');
   passed('affiliate create/reject (requires a JSON body on the server)');
+
+  await tenantIsolation({
+    organization,
+    authenticated,
+    ownKey: key.secret_key,
+    owned: {
+      organizations: organization.id,
+      products: product.id,
+      customers: customer.id,
+      applications: application.id,
+      'api-keys': key.id,
+      licenses: license.id,
+      activations: activated.activation.id,
+      machines: activated.machine.id,
+      'usage-meters': meter.id,
+      'webhook-endpoints': endpointResult.endpoint.id,
+      'offline-certificates': issued.certificate.id,
+      'commission-plans': commissionPlan.id,
+      affiliates: affiliate.id,
+    },
+    product,
+    customer,
+    license,
+    affiliate,
+  });
+}
+
+/** Every collection GET on the server; each must answer 200 for an org-scoped key. */
+const listRoutes = [
+  'activations',
+  'addons',
+  'affiliate-events',
+  'affiliate-links',
+  'affiliates',
+  'api-keys',
+  'application-notifications',
+  'applications',
+  'audit-logs',
+  'commission-payouts',
+  'commission-plans',
+  'customers',
+  'entitlements',
+  'gateway-configs',
+  'gateway-webhook-logs',
+  'invoices',
+  'licenses',
+  'machines',
+  'notification-templates',
+  'notifications',
+  'offline-certificates',
+  'orders',
+  'organizations',
+  'payment-methods',
+  'payments',
+  'plans',
+  'products',
+  'referral-codes',
+  'referral-events',
+  'referral-programs',
+  'releases',
+  'subscriptions',
+  'usage-meters',
+  'webhook-endpoints',
+  'webhook-events',
+];
+
+async function rawGet(path, apiKey) {
+  const response = await globalThis.fetch(`${baseUrl}/api/v1/${path}`, {
+    headers: { 'X-API-Key': apiKey },
+  });
+  return { status: response.status, text: await response.text() };
+}
+
+function hasStatus(status) {
+  return (error) => error.status === status;
+}
+
+/** Proves org A's data is invisible and immutable to org B's credentials. */
+async function tenantIsolation({
+  organization,
+  authenticated,
+  ownKey,
+  owned,
+  product,
+  customer,
+  license,
+  affiliate,
+}) {
+  await assert.rejects(() => anonymous.organizations.list(), hasStatus(401));
+  const noRole = new Client({
+    baseUrl,
+    auth: { apiKey: 'unused' },
+    fetch: withIdentity({ 'X-User-ID': 'sdk-smoke-no-role' }),
+  });
+  await assert.rejects(() => noRole.organizations.list(), hasStatus(403));
+  passed('tenant isolation: anonymous and role-less identities are refused');
+
+  const otherSuffix = randomUUID().slice(0, 12);
+  const otherOrg = await client.organizations.create({
+    name: `SDK other ${otherSuffix}`,
+    slug: `sdk-other-${otherSuffix}`,
+    currency: 'USD',
+    timezone: 'UTC',
+  });
+  const otherProduct = await client.products.create({
+    org_id: otherOrg.id,
+    name: `SDK other product ${otherSuffix}`,
+    slug: `sdk-other-product-${otherSuffix}`,
+    product_type: 'saas',
+  });
+  const otherApp = await client.applications.create({
+    org_id: otherOrg.id,
+    product_id: otherProduct.id,
+    name: `SDK other app ${otherSuffix}`,
+    environment: 'sandbox',
+  });
+  const otherKey = await client.apiKeys.create({
+    application_id: otherApp.id,
+    name: `SDK other key ${otherSuffix}`,
+    scopes: ['usage:report'],
+    environment: 'sandbox',
+  });
+  const other = new Client({ baseUrl, auth: { apiKey: otherKey.secret_key } });
+
+  const visibleOrgs = await other.organizations.list();
+  assert.deepEqual(
+    visibleOrgs.data.map((org) => org.id),
+    [otherOrg.id],
+  );
+  passed('tenant isolation: an org-scoped key lists only its own organization');
+
+  for (const [resource, id] of Object.entries(owned)) {
+    const response = await rawGet(`${resource}/${id}`, otherKey.secret_key);
+    assert.equal(response.status, 404, `GET ${resource}/{id} from another org: ${response.text}`);
+  }
+  passed(`tenant isolation: ${Object.keys(owned).length} foreign resources are 404 by ID`);
+
+  const ownedIds = [organization.id, ...Object.values(owned)];
+  for (const route of listRoutes) {
+    const mine = await rawGet(route, otherKey.secret_key);
+    assert.equal(mine.status, 200, `GET ${route} as org-scoped key: ${mine.text}`);
+    const leaked = ownedIds.filter((id) => mine.text.includes(id));
+    assert.deepEqual(leaked, [], `GET ${route} leaked another org's IDs`);
+    const own = await rawGet(route, ownKey);
+    assert.equal(own.status, 200, `GET ${route} as the owning org's key: ${own.text}`);
+  }
+  passed(`tenant isolation: ${listRoutes.length} list endpoints return no foreign rows`);
+
+  await assert.rejects(
+    () =>
+      other.commissionPlans.create({
+        org_id: organization.id,
+        name: 'cross-tenant write',
+        commission_type: 'percentage',
+        commission_value: 1,
+      }),
+    hasStatus(403),
+  );
+  await assert.rejects(
+    () =>
+      other.licenses.create({
+        product_id: product.id,
+        customer_id: customer.id,
+        license_type: 'perpetual',
+        max_activations: 1,
+        perpetual: true,
+      }),
+    hasStatus(404),
+  );
+  await assert.rejects(
+    () => other.affiliates.update(affiliate.id, { name: 'renamed' }),
+    hasStatus(404),
+  );
+  await assert.rejects(
+    () =>
+      other.usageReporter.reportSingle({
+        license_key: license.license_key,
+        feature_key: 'cross_tenant',
+        quantity: 1,
+        period_start: new Date(Date.now() - 1000).toISOString(),
+        period_end: new Date().toISOString(),
+        idempotency_key: `cross-${otherSuffix}`,
+      }),
+    hasStatus(404),
+  );
+  passed('tenant isolation: cross-org create, update, and usage report are refused');
+
+  assert.equal((await authenticated.affiliates.get(affiliate.id)).id, affiliate.id);
+  assert.ok(
+    (await authenticated.licenses.list({ limit: 100 })).data.some((l) => l.id === license.id),
+  );
+  assert.equal((await client.affiliates.get(affiliate.id)).id, affiliate.id);
+  passed('tenant isolation: owners and operators keep access');
 }
 
 try {

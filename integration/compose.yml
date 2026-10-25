@@ -46,6 +46,11 @@ services:
       WORKER_CONCURRENCY: '1'
       AUTH_MODE: delegated
       AUTH_BUILTIN_ENABLED: 'false'
+      # The smoke test acts as the platform operator the way oauth2-proxy does
+      # in production: trusted X-User-ID/X-Roles headers. Trusting every source
+      # is safe only because this stack is published on loopback alone.
+      TRUSTED_PROXY_CIDRS: 0.0.0.0/0
+      AUTH_OPERATOR_ROLES: commerce:admin
       RELEASE_STORAGE_BACKEND: local
       RELEASE_STORAGE_LOCAL_DIR: /tmp/commerce-releases
     ports:
