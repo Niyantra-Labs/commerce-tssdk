@@ -50,6 +50,8 @@ services:
       RELEASE_STORAGE_LOCAL_DIR: /tmp/commerce-releases
     ports:
       - '127.0.0.1:19094:9094'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     depends_on:
       postgres:
         condition: service_healthy

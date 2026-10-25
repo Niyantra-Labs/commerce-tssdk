@@ -35,6 +35,30 @@ export interface OfflineVerifyResult {
   readonly error_message?: string;
 }
 
+/** The decoded contents of an offline certificate's signed bytes. */
+export interface OfflineCertificatePayload {
+  readonly certificate_id: string;
+  readonly license_id: string;
+  readonly license_key: string;
+  readonly machine_id: string;
+  readonly fingerprint: string;
+  readonly product_id: string;
+  readonly customer_id: string;
+  readonly issued_at: string;
+  readonly expires_at: string;
+  readonly grace_expires_at: string;
+  readonly features?: Readonly<Record<string, Go.ResolvedFeature>>;
+}
+
+/** Result of a fully local (no network round-trip) offline certificate check. */
+export interface OfflineLocalVerifyResult {
+  readonly valid: boolean;
+  readonly payload?: OfflineCertificatePayload;
+  readonly inGracePeriod: boolean;
+  readonly errorCode?: string;
+  readonly errorMessage?: string;
+}
+
 export interface WebhookEventEnvelope {
   readonly id: string;
   readonly type: string;
@@ -115,6 +139,11 @@ export interface InvoiceDetail {
   readonly customer_name?: string;
   readonly order_number?: string | null;
   readonly credit_notes: ReadonlyArray<Readonly<Record<string, unknown>>>;
+}
+export interface WebhookEventDetail {
+  readonly event: Go.WebhookEvent;
+  readonly endpoint_url: string;
+  readonly endpoint?: Go.WebhookEndpoint | null;
 }
 export interface MachineDetail extends Go.Machine {
   readonly active_activations: number;

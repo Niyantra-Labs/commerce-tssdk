@@ -239,21 +239,21 @@ export class SubscriptionService extends CollectionService<
     id: string,
     input: M.SubscriptionPauseParams,
     options?: RequestOptions,
-  ): Promise<M.SubscriptionMutationResult> {
+  ): Promise<M.Subscription> {
     return this.action(id, 'pause', input, options);
   }
   resume(
     id: string,
     input: M.SubscriptionResumeParams,
     options?: RequestOptions,
-  ): Promise<M.SubscriptionMutationResult> {
+  ): Promise<M.Subscription> {
     return this.action(id, 'resume', input, options);
   }
   cancel(
     id: string,
     input: M.SubscriptionCancelParams,
     options?: RequestOptions,
-  ): Promise<M.SubscriptionMutationResult> {
+  ): Promise<M.Subscription> {
     return this.action(id, 'cancel', input, options);
   }
   changePlan(
@@ -457,7 +457,7 @@ export class WebhookEventService {
       options,
     );
   }
-  get(id: string, options?: RequestOptions): Promise<M.WebhookEvent> {
+  get(id: string, options?: RequestOptions): Promise<C.WebhookEventDetail> {
     return this.http.request(
       { method: 'GET', path: `/webhook-events/${pathSegment(id)}`, kind: 'data' },
       options,
@@ -662,14 +662,26 @@ export class ReferralEventService extends CollectionService<
       options,
     );
   }
-  qualify(id: string, options?: RequestOptions): Promise<M.ReferralEvent> {
-    return this.action(id, 'qualify', undefined, options);
+  qualify(
+    id: string,
+    input: M.ReferralEventQualifyParams,
+    options?: RequestOptions,
+  ): Promise<M.ReferralEvent> {
+    return this.action(id, 'qualify', input, options);
   }
-  reward(id: string, options?: RequestOptions): Promise<M.ReferralEvent> {
-    return this.action(id, 'reward', undefined, options);
+  reward(
+    id: string,
+    input: M.ReferralEventRewardParams,
+    options?: RequestOptions,
+  ): Promise<M.ReferralEvent> {
+    return this.action(id, 'reward', input, options);
   }
-  reject(id: string, options?: RequestOptions): Promise<M.ReferralEvent> {
-    return this.action(id, 'reject', undefined, options);
+  reject(
+    id: string,
+    input: M.ReferralEventRejectParams,
+    options?: RequestOptions,
+  ): Promise<M.ReferralEvent> {
+    return this.action(id, 'reject', input, options);
   }
 }
 export class AffiliateService extends ResourceService<
@@ -681,11 +693,19 @@ export class AffiliateService extends ResourceService<
   constructor(http: Transport) {
     super(http, '/affiliates');
   }
-  approve(id: string, options?: RequestOptions): Promise<M.Affiliate> {
-    return this.action(id, 'approve', undefined, options);
+  approve(
+    id: string,
+    input: M.AffiliateApproveParams,
+    options?: RequestOptions,
+  ): Promise<M.Affiliate> {
+    return this.action(id, 'approve', input, options);
   }
-  reject(id: string, options?: RequestOptions): Promise<M.Affiliate> {
-    return this.action(id, 'reject', undefined, options);
+  reject(
+    id: string,
+    input: M.AffiliateRejectParams,
+    options?: RequestOptions,
+  ): Promise<M.Affiliate> {
+    return this.action(id, 'reject', input, options);
   }
   suspend(id: string, options?: RequestOptions): Promise<M.Affiliate> {
     return this.action(id, 'suspend', undefined, options);
@@ -734,8 +754,12 @@ export class AffiliateEventService extends CollectionService<
       options,
     );
   }
-  review(id: string, options?: RequestOptions): Promise<M.AffiliateEvent> {
-    return this.action(id, 'review', undefined, options);
+  review(
+    id: string,
+    input: M.AffiliateEventReviewParams,
+    options?: RequestOptions,
+  ): Promise<M.AffiliateEvent> {
+    return this.action(id, 'review', input, options);
   }
 }
 export class CommissionPayoutService extends CollectionService<
@@ -754,16 +778,32 @@ export class CommissionPayoutService extends CollectionService<
       options,
     );
   }
-  approve(id: string, options?: RequestOptions): Promise<M.CommissionPayout> {
-    return this.action(id, 'approve', undefined, options);
+  approve(
+    id: string,
+    input: M.CommissionPayoutApproveParams,
+    options?: RequestOptions,
+  ): Promise<M.CommissionPayout> {
+    return this.action(id, 'approve', input, options);
   }
-  pay(id: string, options?: RequestOptions): Promise<M.CommissionPayout> {
-    return this.action(id, 'pay', undefined, options);
+  pay(
+    id: string,
+    input: M.CommissionPayoutPayParams,
+    options?: RequestOptions,
+  ): Promise<M.CommissionPayout> {
+    return this.action(id, 'pay', input, options);
   }
-  fail(id: string, options?: RequestOptions): Promise<M.CommissionPayout> {
-    return this.action(id, 'fail', undefined, options);
+  fail(
+    id: string,
+    input: M.CommissionPayoutFailParams,
+    options?: RequestOptions,
+  ): Promise<M.CommissionPayout> {
+    return this.action(id, 'fail', input, options);
   }
-  reverse(id: string, options?: RequestOptions): Promise<M.CommissionPayout> {
-    return this.action(id, 'reverse', undefined, options);
+  reverse(
+    id: string,
+    input: M.CommissionPayoutReverseParams,
+    options?: RequestOptions,
+  ): Promise<M.CommissionPayout> {
+    return this.action(id, 'reverse', input, options);
   }
 }

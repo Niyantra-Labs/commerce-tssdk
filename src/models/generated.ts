@@ -150,6 +150,7 @@ export interface CommissionPlan {
 }
 
 export interface CommissionPlanCreateParams {
+  org_id: string;
   name: string;
   description?: string | null;
   commission_type: string;
@@ -193,7 +194,7 @@ export interface Affiliate {
   readonly approved_by?: string | null;
   readonly rejected_at?: string | null;
   readonly rejection_reason?: string | null;
-  readonly payout_threshold?: number | null;
+  readonly payout_threshold_cents?: number | null;
   readonly payout_currency?: string | null;
   readonly payout_method?: string | null;
   readonly payout_details?: Metadata;
@@ -213,16 +214,21 @@ export interface Affiliate {
 }
 
 export interface AffiliateCreateParams {
+  org_id: string;
   name: string;
   email: string;
   phone?: string | null;
   company_name?: string | null;
   website?: string | null;
-  commission_plan_id: string;
-  payout_threshold?: number | null;
+  account_id?: string | null;
+  commission_plan_id?: string | null;
+  payout_threshold_cents?: number | null;
   payout_currency?: string | null;
   payout_method?: string | null;
   payout_details?: Metadata;
+  promotional_assets?: Metadata;
+  restricted_products?: ReadonlyArray<string>;
+  restricted_geos?: ReadonlyArray<string>;
   notes?: string | null;
   metadata?: Metadata;
 }
@@ -234,12 +240,20 @@ export interface AffiliateUpdateParams {
   company_name?: string | null;
   website?: string | null;
   commission_plan_id?: string | null;
-  payout_threshold?: number | null;
+  payout_threshold_cents?: number | null;
   payout_currency?: string | null;
   payout_method?: string | null;
   payout_details?: Metadata;
   notes?: string | null;
   metadata?: Metadata;
+}
+
+export interface AffiliateApproveParams {
+  approved_by: string;
+}
+
+export interface AffiliateRejectParams {
+  reason: string;
 }
 
 export type AffiliateListParams = ListParams;
@@ -310,7 +324,7 @@ export interface AffiliateEvent {
 
 export interface AffiliateEventCreateParams {
   affiliate_id: string;
-  link_id: string;
+  link_id?: string | null;
   event_type: string;
   customer_id?: string | null;
   order_id?: string | null;
@@ -321,6 +335,10 @@ export interface AffiliateEventListParams extends ListParams {
   affiliate_id?: string | null;
   link_id?: string | null;
   event_type?: string | null;
+}
+
+export interface AffiliateEventReviewParams {
+  reviewed_by: string;
 }
 
 export interface CommissionPayout {
@@ -353,6 +371,7 @@ export interface CommissionPayout {
 }
 
 export interface CommissionPayoutCreateParams {
+  org_id: string;
   payee_type: string;
   payee_id: string;
   period_start: string;
@@ -365,6 +384,23 @@ export interface CommissionPayoutCreateParams {
 export interface CommissionPayoutListParams extends ListParams {
   payee_type?: string | null;
   payee_id?: string | null;
+}
+
+export interface CommissionPayoutApproveParams {
+  approved_by: string;
+}
+
+export interface CommissionPayoutPayParams {
+  payment_method?: string | null;
+  payment_reference?: string | null;
+}
+
+export interface CommissionPayoutFailParams {
+  reason: string;
+}
+
+export interface CommissionPayoutReverseParams {
+  reason: string;
 }
 
 export interface Application {
@@ -1166,6 +1202,7 @@ export interface ReferralProgram {
 }
 
 export interface ReferralProgramCreateParams {
+  org_id: string;
   name: string;
   description?: string | null;
   reward_type: string;
@@ -1260,6 +1297,19 @@ export interface ReferralEventListParams extends ListParams {
   code_id?: string | null;
 }
 
+export interface ReferralEventQualifyParams {
+  attributed_order_id?: string | null;
+}
+
+export interface ReferralEventRewardParams {
+  referrer_reward_amount_cents?: number | null;
+  referred_reward_amount_cents?: number | null;
+}
+
+export interface ReferralEventRejectParams {
+  reason: string;
+}
+
 export interface Subscription {
   readonly id: string;
   readonly customer_id: string;
@@ -1307,6 +1357,8 @@ export interface SubscriptionCreateParams {
   trial_days?: number | null;
   proration_behavior?: string | null;
   billing_anchor?: string | null;
+  bundle_product_ids?: ReadonlyArray<string>;
+  grace_days?: number | null;
   metadata?: Metadata;
 }
 
@@ -1314,6 +1366,7 @@ export interface SubscriptionUpdateParams {
   gateway?: string | null;
   gateway_subscription_id?: string | null;
   gateway_customer_id?: string | null;
+  proration_behavior?: string | null;
   metadata?: Metadata;
 }
 
@@ -1507,6 +1560,7 @@ export interface WebhookEndpoint {
 }
 
 export interface WebhookEndpointCreateParams {
+  org_id: string;
   url: string;
   description?: string | null;
   events?: ReadonlyArray<string>;
@@ -1529,7 +1583,9 @@ export interface WebhookEndpointUpdateParams {
   metadata?: Metadata;
 }
 
-export type WebhookEndpointListParams = ListParams;
+export interface WebhookEndpointListParams extends ListParams {
+  org_id?: string;
+}
 
 export interface WebhookEvent {
   readonly id: string;

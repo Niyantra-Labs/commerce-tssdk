@@ -159,6 +159,37 @@ describe('Phase 1 server contracts', () => {
     await expect(client.orders.list()).resolves.toEqual({ data: [], total: 0 });
   });
 
+  it('sends org_id on webhook endpoint create (server requires it)', async () => {
+    const fetcher = vi.fn(async (_url: URL | RequestInfo, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.org_id).toBe('org_1');
+      return json({ data: { endpoint: { id: 'ep_1' }, secret: 'whsec_x' } }, 201);
+    });
+    const client = new Client({ auth: { apiKey: 'sk_test' }, fetch: fetcher as typeof fetch });
+    const result = await client.webhookEndpoints.create({
+      org_id: 'org_1',
+      url: 'https://example.test/hook',
+    });
+    expect(result.secret).toBe('whsec_x');
+  });
+
+  it('unwraps the nested event/endpoint_url shape from webhook event get', async () => {
+    const client = new Client({
+      auth: { apiKey: 'sk_test' },
+      fetch: async () =>
+        json({
+          data: {
+            event: { id: 'evt_1', status: 'delivered' },
+            endpoint_url: 'https://example.test/hook',
+          },
+        }),
+    });
+    await expect(client.webhookEvents.get('evt_1')).resolves.toMatchObject({
+      event: { id: 'evt_1', status: 'delivered' },
+      endpoint_url: 'https://example.test/hook',
+    });
+  });
+
   it('provides strict date and result helpers', async () => {
     expect(toDate('2026-04-03T12:00:00Z').toISOString()).toBe('2026-04-03T12:00:00.000Z');
     expect(() => toDate('April 3, 2026')).toThrow();

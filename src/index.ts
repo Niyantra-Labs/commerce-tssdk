@@ -25,8 +25,11 @@ export type {
   SubscriptionDetail as ServerSubscriptionDetail,
   InvoiceDetail,
   MachineDetail,
+  WebhookEventDetail,
   ApiKeySecretResult,
   PlanComparison,
+  OfflineCertificatePayload,
+  OfflineLocalVerifyResult,
 } from './models/contracts.js';
 export type { WebhookEventEnvelope as VerifiedWebhookEventEnvelope } from './models/contracts.js';
 export { CollectionService, ResourceService, collectAll } from './services/base.js';
@@ -34,5 +37,6 @@ export * from './services/index.js';
 export { UsageReporter } from './usage-reporter.js';
 export { WebhookVerifier } from './webhook-verifier.js';
 export type { HeaderSource } from './webhook-verifier.js';
+export { OfflineVerifier } from './offline-verifier.js';
 export { toDate, asResult } from './utils.js';
 export type { Result } from './utils.js';
