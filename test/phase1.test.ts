@@ -274,9 +274,9 @@ describe('enum unions from the server constraints', () => {
       customer_id: 'c',
       license_type: 'perpetual',
     };
-    // @ts-expect-error not a license type the server accepts
     const typo: import('../src/index.js').LicenseCreateParams = {
       ...input,
+      // @ts-expect-error not a license type the server accepts
       license_type: 'perpetal',
     };
     // A newer server may add statuses; responses stay assignable from any string.
