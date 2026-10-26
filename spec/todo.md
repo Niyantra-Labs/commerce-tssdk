@@ -54,7 +54,7 @@ SDKs stay in sync.
 - [x] Node engine minimum `>=20` is now backed by the runtime smoke (Node 20.20 and 24.22 pass every check, including Ed25519 Web Crypto); `crypto.subtle` has no `timingSafeEqual`, so the webhook verifier compares in constant time itself
 - [x] Browser / edge runtime support — the built package references only `globalThis.fetch` and the global `crypto`; proven in Chrome, workerd (Cloudflare Workers), Deno, and Bun. Vercel Edge not tested (no runtime available locally).
 - [x] Runtime dependencies kept minimal: platform `fetch` and `crypto.subtle`; no runtime dependencies
-- [x] Dev dependencies: `typescript`, `tsup`, `vitest`, `@vitest/coverage-v8`, `msw` (mock service worker for integration tests), `@types/node`, `eslint`, `@typescript-eslint/*`, `prettier`, `typedoc` — actual set: typescript (tsc, no tsup), vitest, msw 2.15.0, @types/node, @types/express, eslint + typescript-eslint, prettier, typedoc; no coverage tool yet
+- [x] Dev dependencies: `typescript`, `tsup`, `vitest`, `@vitest/coverage-v8`, `msw` (mock service worker for integration tests), `@types/node`, `eslint`, `@typescript-eslint/*`, `prettier`, `typedoc` — actual set: typescript (tsc, no tsup), Vitest and coverage-v8 4.1.11, msw 2.15.0, @types/node, @types/express, eslint + typescript-eslint, prettier, typedoc
 - [x] npm scripts: `fmt`, `lint`, `typecheck`, `test`, `build`, `docs`, `audit`
 - [x] `LICENSE` (MIT, same text as Go SDK)
 - [x] `.gitignore` (node_modules/, dist/, coverage/, _.tsbuildinfo, .env_)
@@ -242,24 +242,24 @@ Each service is a class (or object literal with methods) that shares a reference
 
 - [ ] Pluggable logger interface (`{ debug, info, warn, error }`) — defaults to no-op
 - [ ] Request/response debug events gated behind a `debug: true` option
-- [ ] Request timing metrics exposed via `onResponse` callback (`durationMs`, `attempt`, `retries`)
-- [ ] Retry attempt events
+- [x] Request timing metrics exposed via `onResponse` callback — `ResponseHookEvent` has `durationMs` and one-based `attempt`; retries so far are `attempt - 1` (`src/transport.ts`, `test/hooks-observability.test.ts`)
+- [x] Retry attempt events — `onRetry` reports reason, delay, attempt, and duration before backoff (`src/transport.ts`, hook tests)
 - [ ] OpenTelemetry integration via a thin adapter in a separate `@niyantra/commerce-otel` package so the core stays dependency-free
 
 ### 3.2 Advanced Client Features
 
 - [ ] Middleware chain — `client.use((req, next) => next(req))` for request/response interception
 - [ ] Custom header injection per-request via the method options bag
-- [ ] Proxy support through fetch injection (`undici.Agent` / `https-proxy-agent` examples in docs, not a hard dep)
-- [ ] Configurable keep-alive via the injectable `fetch`
-- [ ] Configurable `maxRetries`, `backoffMultiplier`, and jitter strategy
+- [~] Proxy support through fetch injection — `ClientOptions.fetch` accepts a caller-wrapped implementation; a concrete proxy example remains to be documented
+- [x] Configurable keep-alive via the injectable `fetch` — transport calls injected fetch unbound; the caller controls its agent/dispatcher, with no runtime dependency
+- [~] Configurable `maxRetries`, `backoffMultiplier`, and jitter strategy — `maxRetries` is configured and tested; multiplier and jitter strategy are internal only
 - [ ] Idempotency-Key auto-generation only if the server is verified to honor that header for the specific operation; otherwise do not present it as retry safety
-- [ ] Request ID propagation (`X-Request-ID` in + out, exposed on errors as `error.requestId`)
+- [x] Request ID propagation (`X-Request-ID` in + out, exposed on errors as `error.requestId`) — per-call option is sent by transport, response ID reaches `CommerceApiError` and hooks (`test/edge-transport.test.ts`, `test/hooks-observability.test.ts`)
 
 ### 3.3 Developer Experience
 
 - [ ] TSDoc examples for all major types and methods
-- [ ] Typed webhook event handling — `onWebhookEvent('license.issued', event => event.data)` with narrowed event data via mapped types
+- [x] Typed webhook event handling — `TypedWebhookEvent` / `isKnownWebhookEvent` narrow confirmed event payloads and preserve unknown future types (`src/webhook-events.ts`, `test/webhook-events.test.ts`, live smoke)
 - [ ] `defineWebhookHandler({ secret, handlers })` factory returning a framework-agnostic request handler
 - [ ] Batch operation helpers (parallel license creation via `Promise.allSettled` with a concurrency limit)
 - [ ] CLI tool (`npx @niyantra/commerce-cli`) for SDK exploration / quick REPL-style calls
@@ -296,15 +296,15 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] `npm publish` automation on tagged releases (with `NPM_TOKEN` secret)
 - [ ] Provenance publishing (`npm publish --provenance`) for supply-chain trust
 - [ ] Publish `@niyantra/commerce` to npm, verify the published tarball contains only `dist/`, `README.md`, `LICENSE`, `package.json`
-- [ ] Verify `types` / `exports` resolution via `@arethetypeswrong/cli`
+- [~] Verify `types` / `exports` resolution via `@arethetypeswrong/cli` — `attw` 0.18.5 reports green node10, node16 ESM, and bundler paths; its expected Node 16 CommonJS → ESM warning exits nonzero (ESM-only package, Node >=20)
 
 ### 4.3 Quality Gates
 
-- [ ] Minimum 80% test coverage
+- [x] Minimum 80% test coverage — `npm run coverage` measured 92.1% statements, 86.74% branches, 98.39% functions, 93.88% lines; configured aggregate thresholds are 90/84/96/91
 - [ ] Zero ESLint warnings with `--max-warnings 0`
-- [ ] `tsc --noEmit` clean on the root tsconfig
-- [ ] `publint` clean to catch common packaging mistakes
-- [ ] `@arethetypeswrong/cli` clean (ESM + CJS + types dual-module resolution)
+- [x] `tsc --noEmit` clean on the root tsconfig — `npm run typecheck` passed (root and test tsconfigs)
+- [x] `publint` clean to catch common packaging mistakes — `publint` 0.3.25 reported “All good!” on the built package
+- [~] `@arethetypeswrong/cli` clean (ESM + CJS + types dual-module resolution) — supported ESM paths green; expected Node 16 CommonJS warning remains and makes the tool exit nonzero
 - [ ] Bundle-size budget tracked via `size-limit` (initial: < 25 KB gzipped for `@niyantra/commerce`)
 - [ ] API extractor / API report diffing between releases (breaking change detection)
 - [ ] Security audit of crypto operations (review HMAC, Ed25519, constant-time compare paths)
