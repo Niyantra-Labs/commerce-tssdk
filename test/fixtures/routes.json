@@ -1175,7 +1175,7 @@
  },
  "POST /api/v1/releases/{id}/artifacts": {
   "source": "internal/domain/release/handler.go:handleUploadArtifact",
-  "body": "multipart",
+  "body": "none",
   "status": 201,
   "envelope": "data"
  },

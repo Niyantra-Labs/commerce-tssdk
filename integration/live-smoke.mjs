@@ -645,19 +645,46 @@ async function serverExtensions({ api, organization, product, customer, license 
   assert.ok(providers.some((provider) => provider.id === 'stripe'));
   const schema = await api.gatewayProviders.schema('stripe');
   assert.ok(schema.schema.fields?.some((field) => field.key === 'secret_key' && field.required));
-  // No secret_key, so the connectivity test fails locally without calling Stripe.
+  // Credentials are validated against the provider schema, as in the console.
+  await assert.rejects(
+    () =>
+      api.gatewayConfigs.create({
+        org_id: organization.id,
+        provider: 'stripe',
+        environment: 'sandbox',
+        credentials: {},
+      }),
+    (error) =>
+      error.status === 400 &&
+      error.code === 'invalid_credentials' &&
+      typeof error.details?.secret_key === 'string',
+  );
+  await assert.rejects(
+    () =>
+      api.gatewayConfigs.create({
+        org_id: organization.id,
+        provider: 'not-a-provider',
+        credentials: {},
+      }),
+    (error) => error.status === 400 && error.code === 'unsupported_provider',
+  );
+  // Format-valid but fake keys. gatewayConfigs.test is not called live: it would
+  // contact Stripe with them (the contract suite covers that route).
   const gateway = await api.gatewayConfigs.create({
     org_id: organization.id,
     provider: 'stripe',
     environment: 'sandbox',
-    credentials: {},
+    credentials: {
+      secret_key: `sk_test_${'0'.repeat(24)}`,
+      publishable_key: `pk_test_${'0'.repeat(24)}`,
+    },
   });
   assert.equal(gateway.display_name, 'Stripe');
   assert.ok(!('credentials' in gateway));
-  const tested = await api.gatewayConfigs.test(gateway.id);
-  assert.equal(tested.status, 'error');
-  assert.match(tested.message, /secret_key is required/);
-  assert.equal((await api.gatewayConfigs.get(gateway.id)).last_health_status, 'error');
+  await assert.rejects(
+    () => api.gatewayConfigs.update(gateway.id, { credentials: { secret_key: 'not-a-key' } }),
+    (error) => error.status === 400 && error.code === 'invalid_credentials',
+  );
   assert.equal((await api.gatewayConfigs.setDefault(gateway.id)).is_default, true);
   assert.equal(
     (await api.gatewayConfigs.update(gateway.id, { display_name: 'Stripe sandbox' })).display_name,
@@ -667,7 +694,9 @@ async function serverExtensions({ api, organization, product, customer, license 
     (await api.gatewayConfigs.list({ provider: 'stripe' })).data.some((g) => g.id === gateway.id),
   );
   await api.gatewayConfigs.delete(gateway.id);
-  passed('gateway configs (providers/schema, create/test/set-default/update/list/delete)');
+  passed(
+    'gateway configs (providers/schema, credential validation, create/set-default/update/list/delete)',
+  );
 
   const template = await api.notificationTemplates.create({
     org_id: organization.id,
@@ -769,18 +798,49 @@ async function serverExtensions({ api, organization, product, customer, license 
     license_key: license.license_key,
     artifact_id: artifact.id,
   });
+  assert.equal(grant.artifact.storage_path, '', 'public grant must not reveal storage paths');
   const token = new URL(grant.url).pathname.split('/').pop();
   const download = await anonymous.releases.download(token);
   assert.equal(download.filename, `app-${id}.bin`);
   assert.equal(download.checksumSha256, expectedSha);
   const downloaded = new Uint8Array(await download.response.arrayBuffer());
   assert.equal(createHash('sha256').update(downloaded).digest('hex'), expectedSha);
+  // Behind a TLS-terminating proxy the download URL must be https.
+  const proxied = await globalThis.fetch(`${baseUrl}/api/v1/downloads/authorize`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Forwarded-Proto': 'https' },
+    body: JSON.stringify({ license_key: license.license_key, artifact_id: artifact.id }),
+  });
+  assert.match((await proxied.json()).data.url, /^https:\/\//);
+
+  // Uploads stream past the old 10 MiB global body cap, up to the configured
+  // RELEASE_MAX_ARTIFACT_BYTES (16 MiB in the test stack).
+  const big = new Uint8Array(12 * 1024 * 1024).map((_, i) => i % 251);
+  const bigArtifact = await api.releases.uploadArtifact(release.id, {
+    file: new Blob([big]),
+    filename: `big-${id}.bin`,
+    os: 'darwin',
+    arch: 'arm64',
+  });
+  assert.equal(bigArtifact.file_size_bytes, big.length);
+  assert.equal(bigArtifact.checksum_sha256, createHash('sha256').update(big).digest('hex'));
+  await assert.rejects(
+    () =>
+      api.releases.uploadArtifact(release.id, {
+        file: new Blob([new Uint8Array(17 * 1024 * 1024)]),
+        filename: `too-big-${id}.bin`,
+        os: 'windows',
+        arch: 'amd64',
+      }),
+    (error) => error.status === 413 && error.code === 'artifact_too_large',
+  );
+
   assert.equal((await api.releases.yank(release.id, { reason: 'sdk smoke' })).status, 'yanked');
   assert.ok(
     (await api.releases.list({ product_id: product.id })).data.some((r) => r.id === release.id),
   );
   passed(
-    'releases (create/upload/publish/get/checksum, license-authorized streamed download, yank)',
+    'releases (create/upload/publish/get/checksum, streamed download, https URL behind a proxy, 12 MiB upload, 413 over the limit, yank)',
   );
 }
 

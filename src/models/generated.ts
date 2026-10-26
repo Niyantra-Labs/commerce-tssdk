@@ -2093,7 +2093,7 @@ export interface ReleaseListParams extends PageParams {
 
 /** Multipart fields for `POST /releases/{id}/artifacts`. */
 export interface ReleaseArtifactUploadParams {
-  /** The artifact bytes. The server currently caps request bodies at 10 MiB. */
+  /** The artifact bytes, streamed to storage; the server rejects files over `RELEASE_MAX_ARTIFACT_BYTES` (default 2 GiB) with 413. */
   file: Blob;
   filename: string;
   os?: string;

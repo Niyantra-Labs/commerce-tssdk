@@ -579,8 +579,6 @@ Generated from the contract suite (203 methods). "Public" routes take the licens
 
 These are Commerce-side behaviors the SDK documents rather than works around:
 
-- Artifact uploads are capped at 10 MiB by the server's global request body limit.
-- `AuthorizedDownload.url` is built with `http://` even behind TLS; download tokens are reusable until they expire.
+- Download tokens are reusable until they expire.
 - `notifications.retry` re-queues a notification in any state, including one already delivered.
-- Gateway credentials sent through the API are not validated against the provider schema (the admin console validates them).
 - The Go SDK's `orders.update`, `orders.pay`, `invoices.send`, and `webhookEndpoints.delete` target routes the server does not have and are deliberately absent; use `orders.checkout`/`fulfill` and `invoices.issue`/`void`/`pdf`.

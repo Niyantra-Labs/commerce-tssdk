@@ -53,6 +53,7 @@ services:
       AUTH_OPERATOR_ROLES: commerce:admin
       RELEASE_STORAGE_BACKEND: local
       RELEASE_STORAGE_LOCAL_DIR: /tmp/commerce-releases
+      RELEASE_MAX_ARTIFACT_BYTES: '16777216'
     ports:
       - '127.0.0.1:19094:9094'
     extra_hosts:
