@@ -21,7 +21,7 @@ export interface Activation {
   readonly id: string;
   readonly license_id: string;
   readonly machine_id: string;
-  readonly status: string;
+  readonly status: ActivationStatus | (string & {});
   readonly ip_address?: string | null;
   readonly user_agent?: string | null;
   readonly environment?: string | null;
@@ -74,12 +74,12 @@ export interface Addon {
   readonly description?: string | null;
   readonly price_cents: number;
   readonly currency: string;
-  readonly addon_type: string;
-  readonly billing_mode: string;
+  readonly addon_type: AddonAddonType | (string & {});
+  readonly billing_mode: AddonBillingMode | (string & {});
   readonly entitlements: Metadata | null;
   readonly compatible_plan_ids: ReadonlyArray<string> | null;
   readonly sort_order: number;
-  readonly status: string;
+  readonly status: AddonStatus | (string & {});
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -91,8 +91,8 @@ export interface AddonCreateParams {
   description?: string | null;
   price_cents?: number;
   currency?: string;
-  addon_type?: string;
-  billing_mode?: string;
+  addon_type?: AddonAddonType;
+  billing_mode?: AddonBillingMode;
   entitlements?: Metadata;
   compatible_plan_ids?: ReadonlyArray<string>;
   sort_order?: number;
@@ -104,12 +104,12 @@ export interface AddonUpdateParams {
   description?: string | null;
   price_cents?: number | null;
   currency?: string | null;
-  addon_type?: string | null;
-  billing_mode?: string | null;
+  addon_type?: AddonAddonType | null;
+  billing_mode?: AddonBillingMode | null;
   entitlements?: Metadata;
   compatible_plan_ids?: ReadonlyArray<string>;
   sort_order?: number | null;
-  status?: string | null;
+  status?: AddonStatus | null;
 }
 
 export interface AddonListParams extends ListParams {
@@ -121,7 +121,7 @@ export interface LicenseAddon {
   readonly license_id: string;
   readonly addon_id: string;
   readonly quantity: number;
-  readonly status: string;
+  readonly status: LicenseAddonStatus | (string & {});
   readonly purchased_at: string;
   readonly expires_at?: string | null;
   readonly metadata: Metadata | null;
@@ -141,7 +141,7 @@ export interface CommissionPlan {
   readonly org_id: string;
   readonly name: string;
   readonly description?: string | null;
-  readonly commission_type: string;
+  readonly commission_type: CommissionPlanCommissionType | (string & {});
   readonly commission_value: number;
   readonly commission_currency?: string | null;
   readonly tiers?: Metadata;
@@ -149,7 +149,7 @@ export interface CommissionPlan {
   readonly recurring_months?: number | null;
   readonly recurring_cap_cents?: number | null;
   readonly applicable_products?: ReadonlyArray<string>;
-  readonly status: string;
+  readonly status: CommissionPlanStatus | (string & {});
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -158,7 +158,7 @@ export interface CommissionPlanCreateParams {
   org_id: string;
   name: string;
   description?: string | null;
-  commission_type: string;
+  commission_type: CommissionPlanCommissionType;
   commission_value?: number;
   commission_currency?: string | null;
   tiers?: Metadata;
@@ -166,13 +166,13 @@ export interface CommissionPlanCreateParams {
   recurring_months?: number | null;
   recurring_cap_cents?: number | null;
   applicable_products?: ReadonlyArray<string>;
-  status?: string;
+  status?: CommissionPlanStatus;
 }
 
 export interface CommissionPlanUpdateParams {
   name?: string | null;
   description?: string | null;
-  commission_type?: string | null;
+  commission_type?: CommissionPlanCommissionType | null;
   commission_value?: number | null;
   commission_currency?: string | null;
   tiers?: Metadata;
@@ -180,7 +180,7 @@ export interface CommissionPlanUpdateParams {
   recurring_months?: number | null;
   recurring_cap_cents?: number | null;
   applicable_products?: ReadonlyArray<string>;
-  status?: string | null;
+  status?: CommissionPlanStatus | null;
 }
 
 export type CommissionPlanListParams = ListParams;
@@ -195,7 +195,7 @@ export interface Affiliate {
   readonly website?: string | null;
   readonly account_id?: string | null;
   readonly commission_plan_id?: string | null;
-  readonly status: string;
+  readonly status: AffiliateStatus | (string & {});
   readonly approved_at?: string | null;
   readonly approved_by?: string | null;
   readonly rejected_at?: string | null;
@@ -287,7 +287,7 @@ export interface AffiliateLink {
   readonly unique_clicks: number;
   readonly signup_count: number;
   readonly purchase_count: number;
-  readonly status: string;
+  readonly status: AffiliateLinkStatus | (string & {});
   readonly metadata?: Metadata;
   readonly created_at: string;
   readonly updated_at: string;
@@ -324,7 +324,7 @@ export interface AffiliateEvent {
   readonly link_id?: string | null;
   readonly customer_id?: string | null;
   readonly order_id?: string | null;
-  readonly event_type: string;
+  readonly event_type: AffiliateEventEventType | (string & {});
   readonly ip_address?: string | null;
   readonly user_agent?: string | null;
   readonly referrer_url?: string | null;
@@ -345,7 +345,7 @@ export interface AffiliateEventCreateParams {
   link_id?: string | null;
   customer_id?: string | null;
   order_id?: string | null;
-  event_type: string;
+  event_type: AffiliateEventEventType;
   ip_address?: string | null;
   user_agent?: string | null;
   referrer_url?: string | null;
@@ -373,7 +373,7 @@ export interface AffiliateEventReviewParams {
 export interface CommissionPayout {
   readonly id: string;
   readonly org_id: string;
-  readonly payee_type: string;
+  readonly payee_type: CommissionPayoutPayeeType | (string & {});
   readonly payee_id: string;
   readonly period_start: string;
   readonly period_end: string;
@@ -382,7 +382,7 @@ export interface CommissionPayout {
   readonly line_items?: Metadata;
   readonly total_orders: number;
   readonly total_revenue_cents: number;
-  readonly status: string;
+  readonly status: CommissionPayoutStatus | (string & {});
   readonly approved_at?: string | null;
   readonly approved_by?: string | null;
   readonly paid_at?: string | null;
@@ -401,7 +401,7 @@ export interface CommissionPayout {
 
 export interface CommissionPayoutCreateParams {
   org_id: string;
-  payee_type: string;
+  payee_type: CommissionPayoutPayeeType;
   payee_id: string;
   period_start: string;
   period_end: string;
@@ -448,8 +448,8 @@ export interface Application {
   readonly product_id?: string | null;
   readonly name: string;
   readonly description?: string | null;
-  readonly environment: string;
-  readonly status: string;
+  readonly environment: ApplicationEnvironment | (string & {});
+  readonly status: ApplicationStatus | (string & {});
   readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
@@ -460,15 +460,15 @@ export interface ApplicationCreateParams {
   product_id?: string | null;
   name: string;
   description?: string | null;
-  environment?: string;
+  environment?: ApplicationEnvironment;
 }
 
 export interface ApplicationUpdateParams {
   name?: string | null;
   description?: string | null;
   product_id?: string | null;
-  environment?: string | null;
-  status?: string | null;
+  environment?: ApplicationEnvironment | null;
+  status?: ApplicationStatus | null;
 }
 
 /** Filters the applications list handler reads. */
@@ -487,8 +487,8 @@ export interface APIKey {
   readonly key_prefix: string;
   readonly scopes: ReadonlyArray<string> | null;
   readonly rate_limit_per_minute?: number | null;
-  readonly environment: string;
-  readonly status: string;
+  readonly environment: APIKeyEnvironment | (string & {});
+  readonly status: APIKeyStatus | (string & {});
   readonly last_used_at?: string | null;
   readonly expires_at?: string | null;
   readonly revoked_at?: string | null;
@@ -510,7 +510,7 @@ export interface APIKeyCreateParams {
   application_id: string;
   name: string;
   scopes: ReadonlyArray<string>;
-  environment?: string;
+  environment?: APIKeyEnvironment;
   rate_limit_per_minute?: number | null;
   expires_at?: string | null;
 }
@@ -530,7 +530,7 @@ export interface AuditLog {
   readonly id: string;
   readonly org_id?: string | null;
   readonly actor_id?: string | null;
-  readonly actor_type: string;
+  readonly actor_type: AuditLogActorType | (string & {});
   readonly actor_display?: string | null;
   readonly action: string;
   readonly target_type?: string | null;
@@ -543,7 +543,7 @@ export interface AuditLog {
   readonly user_agent?: string | null;
   readonly correlation_id?: string | null;
   readonly request_id?: string | null;
-  readonly severity: string;
+  readonly severity: AuditLogSeverity | (string & {});
   readonly category?: string | null;
   readonly created_at: string;
 }
@@ -580,7 +580,7 @@ export interface Customer {
   readonly tax_id?: string | null;
   readonly currency: string;
   readonly locale: string;
-  readonly status: string;
+  readonly status: CustomerStatus | (string & {});
   readonly churned_at?: string | null;
   readonly churn_reason?: string | null;
   readonly notes?: string | null;
@@ -614,7 +614,7 @@ export interface CustomerUpdateParams {
   shipping_address?: Metadata;
   tax_id?: string | null;
   currency?: string | null;
-  status?: string | null;
+  status?: CustomerStatus | null;
   notes?: string | null;
   tags?: ReadonlyArray<string>;
 }
@@ -655,7 +655,7 @@ export interface Entitlement {
   readonly config_payload: Metadata | null;
   readonly seat_limit?: number | null;
   readonly usage_cap?: number | null;
-  readonly source: string;
+  readonly source: EntitlementSource | (string & {});
   readonly expires_at?: string | null;
   readonly version_constraint?: string | null;
   readonly created_at: string;
@@ -674,7 +674,7 @@ export interface EntitlementCreateParams {
   config_payload?: Metadata;
   seat_limit?: number | null;
   usage_cap?: number | null;
-  source?: string;
+  source?: EntitlementSource;
   expires_at?: string | null;
   version_constraint?: string | null;
 }
@@ -727,7 +727,7 @@ export interface Invoice {
   readonly amount_due_cents: number;
   readonly amount_paid_cents: number;
   readonly currency: string;
-  readonly status: string;
+  readonly status: InvoiceStatus | (string & {});
   readonly due_date?: string | null;
   readonly issued_at?: string | null;
   readonly paid_at?: string | null;
@@ -756,10 +756,10 @@ export interface License {
   readonly plan_id?: string | null;
   readonly subscription_id?: string | null;
   readonly license_key: string;
-  readonly license_type: string;
+  readonly license_type: LicenseLicenseType | (string & {});
   readonly signed_payload?: string | null;
   readonly signature?: string | null;
-  readonly status: string;
+  readonly status: LicenseStatus | (string & {});
   readonly issued_at: string;
   readonly expires_at?: string | null;
   readonly maintenance_expires_at?: string | null;
@@ -783,7 +783,7 @@ export interface LicenseCreateParams {
   product_id: string;
   customer_id: string;
   plan_id?: string | null;
-  license_type?: string;
+  license_type?: LicenseLicenseType;
   expires_at?: string | null;
   maintenance_expires_at?: string | null;
   max_activations?: number;
@@ -886,7 +886,7 @@ export interface OfflineCertificate {
   readonly certificate_hash: string;
   readonly policy_duration_hours: number;
   readonly grace_hours: number;
-  readonly status: string;
+  readonly status: OfflineCertificateStatus | (string & {});
   readonly issued_at: string;
   readonly expires_at: string;
   readonly last_verified_at?: string | null;
@@ -922,7 +922,7 @@ export interface Order {
   readonly addon_id?: string | null;
   readonly coupon_id?: string | null;
   readonly order_number: string;
-  readonly order_type: string;
+  readonly order_type: OrderOrderType | (string & {});
   readonly line_items: ReadonlyArray<LineItem> | null;
   readonly subtotal_cents: number;
   readonly discount_cents: number;
@@ -930,9 +930,9 @@ export interface Order {
   readonly total_cents: number;
   readonly currency: string;
   readonly tax_details: Metadata | null;
-  readonly gateway?: string | null;
+  readonly gateway?: OrderGateway | (string & {}) | null;
   readonly gateway_order_id?: string | null;
-  readonly status: string;
+  readonly status: OrderStatus | (string & {});
   readonly fulfilled: boolean;
   readonly fulfilled_at?: string | null;
   readonly reseller_id?: string | null;
@@ -972,7 +972,7 @@ export interface Organization {
   readonly tax_id?: string | null;
   readonly currency: string;
   readonly timezone: string;
-  readonly status: string;
+  readonly status: OrganizationStatus | (string & {});
   readonly settings: Metadata | null;
   readonly metadata: Metadata | null;
   readonly created_at: string;
@@ -1002,7 +1002,7 @@ export interface OrganizationUpdateParams {
   tax_id?: string | null;
   currency?: string | null;
   timezone?: string | null;
-  status?: string | null;
+  status?: OrganizationStatus | null;
 }
 
 export type OrganizationListParams = ListParams;
@@ -1011,12 +1011,12 @@ export interface Payment {
   readonly id: string;
   readonly order_id: string;
   readonly subscription_id?: string | null;
-  readonly gateway: string;
+  readonly gateway: PaymentGateway | (string & {});
   readonly gateway_payment_id?: string | null;
-  readonly method?: string | null;
+  readonly method?: PaymentMethodValue | (string & {}) | null;
   readonly amount_cents: number;
   readonly currency: string;
-  readonly status: string;
+  readonly status: PaymentStatus | (string & {});
   readonly authorized_at?: string | null;
   readonly captured_at?: string | null;
   readonly paid_at?: string | null;
@@ -1066,8 +1066,8 @@ export interface Plan {
   readonly name: string;
   readonly slug: string;
   readonly description?: string | null;
-  readonly plan_type: string;
-  readonly billing_interval?: string | null;
+  readonly plan_type: PlanPlanType | (string & {});
+  readonly billing_interval?: PlanBillingInterval | (string & {}) | null;
   readonly price_cents: number;
   readonly currency: string;
   readonly setup_fee_cents: number;
@@ -1082,7 +1082,7 @@ export interface Plan {
   readonly is_popular: boolean;
   readonly sort_order: number;
   readonly gateway_config_id?: string | null;
-  readonly status: string;
+  readonly status: PlanStatus | (string & {});
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -1093,8 +1093,8 @@ export interface PlanCreateParams {
   name: string;
   slug: string;
   description?: string | null;
-  plan_type?: string;
-  billing_interval?: string | null;
+  plan_type?: PlanPlanType;
+  billing_interval?: PlanBillingInterval | null;
   price_cents?: number;
   currency?: string;
   setup_fee_cents?: number;
@@ -1115,8 +1115,8 @@ export interface PlanUpdateParams {
   name?: string | null;
   slug?: string | null;
   description?: string | null;
-  plan_type?: string | null;
-  billing_interval?: string | null;
+  plan_type?: PlanPlanType | null;
+  billing_interval?: PlanBillingInterval | null;
   price_cents?: number | null;
   currency?: string | null;
   setup_fee_cents?: number | null;
@@ -1130,7 +1130,7 @@ export interface PlanUpdateParams {
   limits?: Metadata;
   is_popular?: boolean | null;
   sort_order?: number | null;
-  status?: string | null;
+  status?: PlanStatus | null;
   gateway_config_id?: string | null;
 }
 
@@ -1144,12 +1144,12 @@ export interface Product {
   readonly name: string;
   readonly slug: string;
   readonly description?: string | null;
-  readonly product_type: string;
+  readonly product_type: ProductProductType | (string & {});
   readonly logo_url?: string | null;
   readonly website_url?: string | null;
   readonly support_email?: string | null;
-  readonly status: string;
-  readonly default_license_type?: string | null;
+  readonly status: ProductStatus | (string & {});
+  readonly default_license_type?: ProductDefaultLicenseType | (string & {}) | null;
   readonly max_activations_default?: number | null;
   readonly maintenance_duration_months?: number | null;
   readonly signing_key_id?: string | null;
@@ -1165,11 +1165,11 @@ export interface ProductCreateParams {
   name: string;
   slug: string;
   description?: string | null;
-  product_type?: string;
+  product_type?: ProductProductType;
   logo_url?: string | null;
   website_url?: string | null;
   support_email?: string | null;
-  default_license_type?: string | null;
+  default_license_type?: ProductDefaultLicenseType | null;
   max_activations_default?: number | null;
   maintenance_duration_months?: number | null;
   default_gateway_config_id?: string | null;
@@ -1180,12 +1180,12 @@ export interface ProductUpdateParams {
   name?: string | null;
   slug?: string | null;
   description?: string | null;
-  product_type?: string | null;
+  product_type?: ProductProductType | null;
   logo_url?: string | null;
   website_url?: string | null;
   support_email?: string | null;
-  status?: string | null;
-  default_license_type?: string | null;
+  status?: ProductStatus | null;
+  default_license_type?: ProductDefaultLicenseType | null;
   max_activations_default?: number | null;
   maintenance_duration_months?: number | null;
   default_gateway_config_id?: string | null;
@@ -1199,11 +1199,11 @@ export interface ReferralProgram {
   readonly org_id: string;
   readonly name: string;
   readonly description?: string | null;
-  readonly reward_type: string;
+  readonly reward_type: ReferralProgramRewardType | (string & {});
   readonly reward_value: number;
   readonly reward_currency?: string | null;
   readonly reward_max_amount_cents?: number | null;
-  readonly referrer_reward_type?: string | null;
+  readonly referrer_reward_type?: ReferralProgramReferrerRewardType | (string & {}) | null;
   readonly referrer_reward_value?: number | null;
   readonly referrer_reward_currency?: string | null;
   readonly max_uses_per_referrer?: number | null;
@@ -1216,7 +1216,7 @@ export interface ReferralProgram {
   readonly rules?: Metadata;
   readonly valid_from?: string | null;
   readonly valid_until?: string | null;
-  readonly status: string;
+  readonly status: ReferralProgramStatus | (string & {});
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -1225,11 +1225,11 @@ export interface ReferralProgramCreateParams {
   org_id: string;
   name: string;
   description?: string | null;
-  reward_type?: string;
+  reward_type?: ReferralProgramRewardType;
   reward_value?: number;
   reward_currency?: string | null;
   reward_max_amount_cents?: number | null;
-  referrer_reward_type?: string | null;
+  referrer_reward_type?: ReferralProgramReferrerRewardType | null;
   referrer_reward_value?: number | null;
   referrer_reward_currency?: string | null;
   max_uses_per_referrer?: number | null;
@@ -1241,17 +1241,17 @@ export interface ReferralProgramCreateParams {
   rules?: Metadata;
   valid_from?: string | null;
   valid_until?: string | null;
-  status?: string;
+  status?: ReferralProgramStatus;
 }
 
 export interface ReferralProgramUpdateParams {
   name?: string | null;
   description?: string | null;
-  reward_type?: string | null;
+  reward_type?: ReferralProgramRewardType | null;
   reward_value?: number | null;
   reward_currency?: string | null;
   reward_max_amount_cents?: number | null;
-  referrer_reward_type?: string | null;
+  referrer_reward_type?: ReferralProgramReferrerRewardType | null;
   referrer_reward_value?: number | null;
   referrer_reward_currency?: string | null;
   max_uses_per_referrer?: number | null;
@@ -1263,7 +1263,7 @@ export interface ReferralProgramUpdateParams {
   rules?: Metadata;
   valid_from?: string | null;
   valid_until?: string | null;
-  status?: string | null;
+  status?: ReferralProgramStatus | null;
 }
 
 /** The referral-programs handler accepts no `search` filter. */
@@ -1275,12 +1275,12 @@ export interface ReferralCode {
   readonly id: string;
   readonly program_id: string;
   readonly referrer_id: string;
-  readonly referrer_type: string;
+  readonly referrer_type: ReferralCodeReferrerType | (string & {});
   readonly code: string;
   readonly landing_url?: string | null;
   readonly uses_count: number;
   readonly max_uses?: number | null;
-  readonly status: string;
+  readonly status: ReferralCodeStatus | (string & {});
   readonly expires_at?: string | null;
   readonly created_at: string;
   readonly updated_at: string;
@@ -1289,7 +1289,7 @@ export interface ReferralCode {
 export interface ReferralCodeCreateParams {
   program_id: string;
   referrer_id: string;
-  referrer_type: string;
+  referrer_type: ReferralCodeReferrerType;
   code?: string;
   landing_url?: string | null;
   max_uses?: number | null;
@@ -1307,7 +1307,7 @@ export interface ReferralEvent {
   readonly code_id: string;
   readonly referred_customer_id: string;
   readonly attributed_order_id?: string | null;
-  readonly status: string;
+  readonly status: ReferralEventStatus | (string & {});
   readonly referrer_reward_issued: boolean;
   readonly referrer_reward_amount_cents?: number | null;
   readonly referred_reward_issued: boolean;
@@ -1356,8 +1356,8 @@ export interface Subscription {
   readonly product_id: string;
   readonly plan_id: string;
   readonly license_id?: string | null;
-  readonly status: string;
-  readonly gateway?: string | null;
+  readonly status: SubscriptionStatus | (string & {});
+  readonly gateway?: SubscriptionGateway | (string & {}) | null;
   readonly gateway_subscription_id?: string | null;
   readonly gateway_customer_id?: string | null;
   readonly current_period_start?: string | null;
@@ -1371,7 +1371,7 @@ export interface Subscription {
   readonly grace_period_end?: string | null;
   readonly paused_at?: string | null;
   readonly resumed_at?: string | null;
-  readonly proration_behavior: string;
+  readonly proration_behavior: SubscriptionProrationBehavior | (string & {});
   readonly billing_anchor?: string | null;
   readonly next_invoice_at?: string | null;
   readonly metadata?: Metadata;
@@ -1393,20 +1393,20 @@ export interface SubscriptionCreateParams {
   plan_id: string;
   quantity?: number;
   trial_days?: number | null;
-  gateway?: string | null;
+  gateway?: SubscriptionGateway | null;
   gateway_subscription_id?: string | null;
   gateway_customer_id?: string | null;
-  proration_behavior?: string;
+  proration_behavior?: SubscriptionProrationBehavior;
   billing_anchor?: string | null;
   bundle_product_ids?: ReadonlyArray<string>;
   grace_days?: number;
 }
 
 export interface SubscriptionUpdateParams {
-  gateway?: string | null;
+  gateway?: SubscriptionGateway | null;
   gateway_subscription_id?: string | null;
   gateway_customer_id?: string | null;
-  proration_behavior?: string | null;
+  proration_behavior?: SubscriptionProrationBehavior | null;
   metadata?: Metadata;
 }
 
@@ -1467,16 +1467,16 @@ export interface UsageMeter {
   readonly feature_key: string;
   readonly name: string;
   readonly description?: string | null;
-  readonly meter_type: string;
+  readonly meter_type: UsageMeterMeterType | (string & {});
   readonly unit_name: string;
-  readonly reset_period: string;
+  readonly reset_period: UsageMeterResetPeriod | (string & {});
   readonly soft_limit?: number | null;
   readonly hard_limit?: number | null;
   readonly overage_allowed: boolean;
   readonly overage_rate_cents: number;
   readonly overage_currency: string;
   readonly billing_model: string;
-  readonly status: string;
+  readonly status: UsageMeterStatus | (string & {});
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -1486,9 +1486,9 @@ export interface UsageMeterCreateParams {
   feature_key: string;
   name: string;
   description?: string | null;
-  meter_type?: string;
+  meter_type?: UsageMeterMeterType;
   unit_name?: string;
-  reset_period?: string;
+  reset_period?: UsageMeterResetPeriod;
   soft_limit?: number | null;
   hard_limit?: number | null;
   overage_allowed?: boolean;
@@ -1501,16 +1501,16 @@ export interface UsageMeterUpdateParams {
   feature_key?: string | null;
   name?: string | null;
   description?: string | null;
-  meter_type?: string | null;
+  meter_type?: UsageMeterMeterType | null;
   unit_name?: string | null;
-  reset_period?: string | null;
+  reset_period?: UsageMeterResetPeriod | null;
   soft_limit?: number | null;
   hard_limit?: number | null;
   overage_allowed?: boolean | null;
   overage_rate_cents?: number | null;
   overage_currency?: string | null;
   billing_model?: string | null;
-  status?: string | null;
+  status?: UsageMeterStatus | null;
 }
 
 export interface UsageMeterListParams extends ListParams {
@@ -1576,7 +1576,7 @@ export interface UsageCredit {
   readonly id: string;
   readonly license_id: string;
   readonly meter_id: string;
-  readonly entry_type: string;
+  readonly entry_type: UsageCreditEntryType | (string & {});
   readonly quantity: number;
   readonly expires_at?: string | null;
   readonly source_ref?: string | null;
@@ -1592,7 +1592,7 @@ export interface WebhookEndpoint {
   readonly secret_prefix?: string | null;
   readonly events: ReadonlyArray<string> | null;
   readonly api_version?: string | null;
-  readonly status: string;
+  readonly status: WebhookEndpointStatus | (string & {});
   readonly consecutive_failures: number;
   readonly last_success_at?: string | null;
   readonly last_failure_at?: string | null;
@@ -1623,7 +1623,7 @@ export interface WebhookEndpointUpdateParams {
   description?: string | null;
   events?: ReadonlyArray<string>;
   api_version?: string | null;
-  status?: string | null;
+  status?: WebhookEndpointStatus | null;
   disabled_reason?: string | null;
   metadata?: Metadata;
 }
@@ -1639,7 +1639,7 @@ export interface WebhookEvent {
   readonly event_id: string;
   readonly payload: Metadata | null;
   readonly headers?: Metadata;
-  readonly status: string;
+  readonly status: WebhookEventStatus | (string & {});
   readonly attempts: number;
   readonly max_attempts: number;
   readonly next_retry_at?: string | null;
@@ -1673,9 +1673,9 @@ export interface GatewayConfig {
   readonly org_id: string;
   readonly provider: string;
   readonly display_name: string;
-  readonly environment: string;
+  readonly environment: GatewayConfigEnvironment | (string & {});
   readonly is_default: boolean;
-  readonly status: string;
+  readonly status: GatewayConfigStatus | (string & {});
   readonly supports_subscriptions: boolean;
   readonly supports_refunds: boolean;
   readonly supports_saved_cards: boolean;
@@ -1696,7 +1696,7 @@ export interface GatewayConfigCreateParams {
   org_id: string;
   provider: string;
   display_name?: string;
-  environment?: string;
+  environment?: GatewayConfigEnvironment;
   credentials?: Metadata;
   is_default?: boolean;
   metadata?: Metadata;
@@ -1704,10 +1704,10 @@ export interface GatewayConfigCreateParams {
 
 export interface GatewayConfigUpdateParams {
   display_name?: string | null;
-  environment?: string | null;
+  environment?: GatewayConfigEnvironment | null;
   credentials?: Metadata;
   is_default?: boolean | null;
-  status?: string | null;
+  status?: GatewayConfigStatus | null;
   metadata?: Metadata;
 }
 
@@ -1745,7 +1745,7 @@ export interface NotificationTemplate {
   readonly name: string;
   readonly slug: string;
   readonly description?: string | null;
-  readonly channel: string;
+  readonly channel: NotificationTemplateChannel | (string & {});
   readonly subject?: string | null;
   readonly body_template: string;
   readonly body_html?: string | null;
@@ -1753,7 +1753,7 @@ export interface NotificationTemplate {
   readonly from_name?: string | null;
   readonly from_address?: string | null;
   readonly reply_to?: string | null;
-  readonly status: string;
+  readonly status: NotificationTemplateStatus | (string & {});
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -1763,7 +1763,7 @@ export interface NotificationTemplateCreateParams {
   name: string;
   slug: string;
   description?: string | null;
-  channel: string;
+  channel: NotificationTemplateChannel;
   subject?: string | null;
   body_template: string;
   body_html?: string | null;
@@ -1784,7 +1784,7 @@ export interface NotificationTemplateUpdateParams {
   from_name?: string | null;
   from_address?: string | null;
   reply_to?: string | null;
-  status?: string | null;
+  status?: NotificationTemplateStatus | null;
 }
 
 /** An email or SMS notification and its delivery state. */
@@ -1792,15 +1792,15 @@ export interface Notification {
   readonly id: string;
   readonly org_id: string;
   readonly template_id?: string | null;
-  readonly channel: string;
+  readonly channel: NotificationChannel | (string & {});
   readonly recipient: string;
   readonly recipient_name?: string | null;
   readonly subject?: string | null;
   readonly body: string;
   readonly body_html?: string | null;
-  readonly provider: string;
+  readonly provider: NotificationProvider | (string & {});
   readonly provider_message_id?: string | null;
-  readonly status: string;
+  readonly status: NotificationStatus | (string & {});
   readonly queued_at: string;
   readonly sent_at?: string | null;
   readonly delivered_at?: string | null;
@@ -1822,7 +1822,7 @@ export interface Notification {
 export interface NotificationQueueParams {
   org_id: string;
   template_id?: string | null;
-  channel: string;
+  channel: NotificationChannel;
   recipient: string;
   recipient_name?: string | null;
   subject?: string | null;
@@ -1874,8 +1874,8 @@ export interface ApplicationNotification {
   readonly release_id?: string | null;
   readonly title: string;
   readonly message: string;
-  readonly severity: string;
-  readonly message_type: string;
+  readonly severity: ApplicationNotificationSeverity | (string & {});
+  readonly message_type: ApplicationNotificationMessageType | (string & {});
   readonly call_to_action: Metadata | null;
   readonly audience: ApplicationNotificationAudience;
   readonly priority: number;
@@ -1883,7 +1883,7 @@ export interface ApplicationNotification {
   readonly dismissible: boolean;
   readonly starts_at?: string | null;
   readonly expires_at?: string | null;
-  readonly status: string;
+  readonly status: ApplicationNotificationStatus | (string & {});
   readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
@@ -1898,7 +1898,7 @@ export interface ApplicationNotificationReadState {
   readonly machine_id?: string | null;
   readonly application_id?: string | null;
   readonly identity_key: string;
-  readonly state: string;
+  readonly state: ApplicationNotificationReadStateState | (string & {});
   readonly acknowledged_at: string;
   readonly metadata: Metadata | null;
   readonly created_at: string;
@@ -1911,8 +1911,8 @@ export interface ApplicationNotificationCreateParams {
   release_id?: string | null;
   title: string;
   message: string;
-  severity?: string;
-  message_type?: string;
+  severity?: ApplicationNotificationSeverity;
+  message_type?: ApplicationNotificationMessageType;
   call_to_action?: Metadata;
   audience?: ApplicationNotificationAudience;
   priority?: number;
@@ -1920,7 +1920,7 @@ export interface ApplicationNotificationCreateParams {
   dismissible?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
-  status?: string;
+  status?: ApplicationNotificationStatus;
   metadata?: Metadata;
 }
 
@@ -1929,8 +1929,8 @@ export interface ApplicationNotificationUpdateParams {
   release_id?: string | null;
   title?: string | null;
   message?: string | null;
-  severity?: string | null;
-  message_type?: string | null;
+  severity?: ApplicationNotificationSeverity | null;
+  message_type?: ApplicationNotificationMessageType | null;
   call_to_action?: Metadata;
   audience?: ApplicationNotificationAudience | null;
   priority?: number | null;
@@ -1938,7 +1938,7 @@ export interface ApplicationNotificationUpdateParams {
   dismissible?: boolean | null;
   starts_at?: string | null;
   expires_at?: string | null;
-  status?: string | null;
+  status?: ApplicationNotificationStatus | null;
   metadata?: Metadata;
 }
 
@@ -1985,12 +1985,12 @@ export interface Release {
   readonly version_major?: number | null;
   readonly version_minor?: number | null;
   readonly version_patch?: number | null;
-  readonly channel: string;
+  readonly channel: ReleaseChannel | (string & {});
   readonly release_notes?: string | null;
   readonly changelog?: string | null;
   readonly min_os_version?: string | null;
   readonly requires_license_type?: string | null;
-  readonly status: string;
+  readonly status: ReleaseStatus | (string & {});
   readonly published_at?: string | null;
   readonly yanked_at?: string | null;
   readonly yank_reason?: string | null;
@@ -2002,14 +2002,14 @@ export interface Release {
 export interface ReleaseArtifact {
   readonly id: string;
   readonly release_id: string;
-  readonly os: string;
-  readonly arch: string;
+  readonly os: ReleaseArtifactOs | (string & {});
+  readonly arch: ReleaseArtifactArch | (string & {});
   readonly filename: string;
   readonly file_size_bytes: number;
   readonly content_type: string;
   readonly checksum_sha256: string;
   readonly checksum_md5?: string | null;
-  readonly storage_backend: string;
+  readonly storage_backend: ReleaseArtifactStorageBackend | (string & {});
   readonly storage_path: string;
   readonly storage_bucket?: string | null;
   readonly signed: boolean;
@@ -2024,7 +2024,7 @@ export interface ReleaseArtifact {
 export interface ReleaseCreateParams {
   product_id: string;
   version: string;
-  channel?: string;
+  channel?: ReleaseChannel;
   release_notes?: string | null;
   changelog?: string | null;
   min_os_version?: string | null;
@@ -2034,12 +2034,12 @@ export interface ReleaseCreateParams {
 
 export interface ReleaseUpdateParams {
   version?: string | null;
-  channel?: string | null;
+  channel?: ReleaseChannel | null;
   release_notes?: string | null;
   changelog?: string | null;
   min_os_version?: string | null;
   requires_license_type?: string | null;
-  status?: string | null;
+  status?: ReleaseStatus | null;
   yank_reason?: string | null;
   metadata?: Metadata;
 }
@@ -2133,7 +2133,7 @@ export interface PaymentMethod {
   readonly exp_month?: number | null;
   readonly exp_year?: number | null;
   readonly is_default: boolean;
-  readonly status: string;
+  readonly status: PaymentMethodStatus | (string & {});
   readonly metadata?: Metadata;
   readonly created_at: string;
   readonly updated_at: string;
@@ -2175,7 +2175,7 @@ export interface GatewayWebhookLog {
   readonly event_id: string;
   readonly event_type: string;
   readonly normalized_type: string;
-  readonly status: string;
+  readonly status: GatewayWebhookLogStatus | (string & {});
   readonly http_status?: number | null;
   readonly error_message?: string | null;
   readonly processing_ms?: number | null;
@@ -2196,3 +2196,107 @@ export interface GatewayWebhookLogListParams {
   provider?: string;
   status?: string;
 }
+
+// Enum values from the Commerce CHECK constraints (scripts: enum pass).
+export type APIKeyEnvironment = 'sandbox' | 'production';
+export type APIKeyStatus = 'active' | 'revoked' | 'expired';
+export type ActivationStatus = 'active' | 'deactivated';
+export type AddonAddonType = 'feature' | 'capacity' | 'service';
+export type AddonBillingMode = 'one_time' | 'recurring';
+export type AddonStatus = 'active' | 'archived';
+export type AffiliateEventEventType = 'click' | 'signup' | 'purchase' | 'refund';
+export type AffiliateLinkStatus = 'active' | 'disabled';
+export type AffiliateStatus =
+  'pending' | 'approved' | 'active' | 'suspended' | 'rejected' | 'terminated';
+export type ApplicationEnvironment = 'sandbox' | 'production';
+export type ApplicationNotificationMessageType =
+  | 'announcement'
+  | 'update_available'
+  | 'maintenance_notice'
+  | 'forced_upgrade'
+  | 'security_advisory';
+export type ApplicationNotificationReadStateState = 'read' | 'acknowledged' | 'dismissed';
+export type ApplicationNotificationSeverity = 'info' | 'success' | 'warning' | 'error';
+export type ApplicationNotificationStatus = 'draft' | 'scheduled' | 'active' | 'archived';
+export type ApplicationStatus = 'active' | 'suspended' | 'revoked';
+export type AuditLogActorType = 'account' | 'api_key' | 'system' | 'webhook' | 'worker';
+export type AuditLogSeverity = 'info' | 'warning' | 'critical';
+export type CommissionPayoutPayeeType = 'affiliate' | 'reseller' | 'referrer';
+export type CommissionPayoutStatus =
+  'pending' | 'approved' | 'processing' | 'paid' | 'failed' | 'reversed' | 'on_hold';
+export type CommissionPlanCommissionType = 'percentage' | 'fixed' | 'tiered';
+export type CommissionPlanStatus = 'active' | 'archived';
+export type CustomerStatus = 'active' | 'suspended' | 'churned';
+export type EntitlementSource = 'plan' | 'addon' | 'override';
+export type GatewayConfigEnvironment = 'sandbox' | 'production';
+export type GatewayConfigStatus = 'active' | 'inactive' | 'error';
+export type GatewayWebhookLogStatus = 'received' | 'processed' | 'failed' | 'ignored' | 'duplicate';
+export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'void' | 'overdue' | 'uncollectible';
+export type LicenseAddonStatus = 'active' | 'expired' | 'revoked';
+export type LicenseLicenseType = 'perpetual' | 'subscription' | 'trial';
+export type LicenseStatus = 'active' | 'suspended' | 'revoked' | 'expired';
+export type NotificationChannel = 'email' | 'sms';
+export type NotificationProvider = 'ses' | 'smtp' | 'resend' | 'msg91' | 'twilio' | 'gupshup';
+export type NotificationStatus =
+  'queued' | 'sending' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'complained';
+export type NotificationTemplateChannel = 'email' | 'sms';
+export type NotificationTemplateStatus = 'active' | 'archived';
+export type OfflineCertificateStatus = 'active' | 'expired' | 'revoked';
+export type OrderGateway = 'razorpay' | 'stripe' | 'manual';
+export type OrderOrderType = 'new' | 'renewal' | 'upgrade' | 'downgrade' | 'addon' | 'service';
+export type OrderStatus =
+  'pending' | 'processing' | 'paid' | 'failed' | 'refunded' | 'partially_refunded' | 'canceled';
+export type OrganizationStatus = 'active' | 'suspended';
+export type PaymentGateway =
+  | 'stripe'
+  | 'razorpay'
+  | 'paypal'
+  | 'paddle'
+  | 'lemonsqueezy'
+  | 'braintree'
+  | 'adyen'
+  | 'mollie'
+  | 'square'
+  | 'gocardless'
+  | 'paystack'
+  | 'flutterwave'
+  | 'cashfree'
+  | 'paytm'
+  | 'phonepe'
+  | '2checkout'
+  | 'authorizenet'
+  | 'manual';
+export type PaymentMethodStatus = 'active' | 'expired' | 'revoked';
+export type PaymentMethodValue =
+  'card' | 'upi' | 'netbanking' | 'wallet' | 'bank_transfer' | 'manual';
+export type PaymentStatus =
+  'pending' | 'authorized' | 'captured' | 'failed' | 'refunded' | 'partially_refunded';
+export type PlanBillingInterval = 'monthly' | 'yearly';
+export type PlanPlanType = 'subscription' | 'one_time' | 'trial';
+export type PlanStatus = 'active' | 'draft' | 'archived';
+export type ProductDefaultLicenseType = 'perpetual' | 'subscription' | 'trial';
+export type ProductProductType = 'saas' | 'self_hosted' | 'desktop' | 'cli' | 'api';
+export type ProductStatus = 'active' | 'draft' | 'archived';
+export type ReferralCodeReferrerType = 'customer' | 'reseller' | 'account';
+export type ReferralCodeStatus = 'active' | 'expired' | 'disabled';
+export type ReferralEventStatus = 'pending' | 'qualified' | 'rewarded' | 'rejected' | 'expired';
+export type ReferralProgramReferrerRewardType =
+  'discount_pct' | 'discount_fixed' | 'credit' | 'commission_pct';
+export type ReferralProgramRewardType =
+  'discount_pct' | 'discount_fixed' | 'credit' | 'free_months';
+export type ReferralProgramStatus = 'active' | 'paused' | 'archived';
+export type ReleaseArtifactArch = 'amd64' | 'arm64' | 'arm' | '386' | 'any';
+export type ReleaseArtifactOs = 'linux' | 'darwin' | 'windows' | 'freebsd' | 'any';
+export type ReleaseArtifactStorageBackend = 'local' | 's3' | 'gcs';
+export type ReleaseChannel = 'stable' | 'beta' | 'rc' | 'internal';
+export type ReleaseStatus = 'draft' | 'published' | 'archived' | 'yanked';
+export type SubscriptionGateway = 'razorpay' | 'stripe' | 'manual';
+export type SubscriptionProrationBehavior = 'create_prorations' | 'none' | 'always_invoice';
+export type SubscriptionStatus =
+  'trialing' | 'active' | 'past_due' | 'paused' | 'canceled' | 'expired';
+export type UsageCreditEntryType = 'grant' | 'consume' | 'adjustment' | 'expire';
+export type UsageMeterMeterType = 'counter' | 'gauge';
+export type UsageMeterResetPeriod = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type UsageMeterStatus = 'active' | 'archived';
+export type WebhookEndpointStatus = 'active' | 'disabled';
+export type WebhookEventStatus = 'pending' | 'delivering' | 'delivered' | 'failed' | 'dead';

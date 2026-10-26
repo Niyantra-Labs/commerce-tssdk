@@ -266,3 +266,22 @@ describe('array endpoints that older servers return as null', () => {
     await expect(client.paymentMethods.checkoutOptions('cus_1')).resolves.toEqual([]);
   });
 });
+
+describe('enum unions from the server constraints', () => {
+  it('rejects unknown input values but tolerates new response values', () => {
+    const input: import('../src/index.js').LicenseCreateParams = {
+      product_id: 'p',
+      customer_id: 'c',
+      license_type: 'perpetual',
+    };
+    // @ts-expect-error not a license type the server accepts
+    const typo: import('../src/index.js').LicenseCreateParams = {
+      ...input,
+      license_type: 'perpetal',
+    };
+    // A newer server may add statuses; responses stay assignable from any string.
+    const status: import('../src/index.js').License['status'] = 'some-future-status';
+    const known: import('../src/index.js').LicenseStatus = 'revoked';
+    expect([input.license_type, typo.license_type, status, known]).toHaveLength(4);
+  });
+});
