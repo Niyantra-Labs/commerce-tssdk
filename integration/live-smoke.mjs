@@ -689,6 +689,23 @@ async function domainLifecycles({ api, organization, product, customer }) {
 async function serverExtensions({ api, organization, product, customer, license }) {
   const id = randomUUID().slice(0, 8);
 
+  // An entitlement needs a source (plan, license, or add-on); without one it is a 400.
+  await assert.rejects(
+    () => api.entitlements.create({ product_id: product.id, feature_key: `orphan_${id}` }),
+    (error) => error.status === 400,
+  );
+  const entitlement = await api.entitlements.create({
+    product_id: product.id,
+    license_id: license.id,
+    feature_key: `ent_${id}`,
+  });
+  const byFeature = await api.entitlements.list({ feature_key: `ent_${id}` });
+  assert.deepEqual(
+    byFeature.data.map((e) => e.id),
+    [entitlement.id],
+  );
+  passed('entitlements (source required, feature_key list filter)');
+
   const override = await api.licenses.upsertEntitlementOverride(license.id, {
     feature_key: `sso_${id}`,
     enabled: true,
@@ -764,6 +781,37 @@ async function serverExtensions({ api, organization, product, customer, license 
   assert.ok(
     (await api.gatewayConfigs.list({ provider: 'stripe' })).data.some((g) => g.id === gateway.id),
   );
+  const customerForPm = await api.customers.create({
+    org_id: organization.id,
+    name: `Payer ${id}`,
+    email: `payer-${id}@example.test`,
+  });
+  // org_id is derived from the customer, so it can be omitted.
+  const method = await api.paymentMethods.create({
+    customer_id: customerForPm.id,
+    gateway_config_id: gateway.id,
+    provider: 'stripe',
+    method_type: 'card',
+    display_name: 'Visa 4242',
+    last_four: '4242',
+    gateway_method_id: `pm_test_${id}`,
+  });
+  assert.equal(method.org_id, organization.id);
+  assert.equal((await api.paymentMethods.get(method.id)).last_four, '4242');
+  assert.deepEqual(
+    (await api.paymentMethods.list({ customer_id: customerForPm.id })).data.map((m) => m.id),
+    [method.id],
+  );
+  assert.deepEqual(await api.paymentMethods.setDefault(method.id), { status: 'ok' });
+  const checkout = await api.paymentMethods.checkoutOptions(customerForPm.id);
+  const stripeOption = checkout.find((option) => option.config_id === gateway.id);
+  assert.equal(stripeOption?.saved_method_id, method.id);
+  assert.ok(Array.isArray(await api.gatewayConfigs.listWebhookLogs({ provider: 'stripe' })));
+  await api.paymentMethods.delete(method.id);
+  passed(
+    'payment methods (org from customer, get/list/set-default/delete), checkout options, webhook logs',
+  );
+
   await api.gatewayConfigs.delete(gateway.id);
   passed(
     'gateway configs (providers/schema, credential validation, create/set-default/update/list/delete)',

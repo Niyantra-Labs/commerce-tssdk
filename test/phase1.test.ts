@@ -255,3 +255,14 @@ describe('public type exports', () => {
     expect(count).toBe(8);
   });
 });
+
+describe('array endpoints that older servers return as null', () => {
+  it('turns a null webhook-log or checkout-option list into an empty array', async () => {
+    const client = new Client({
+      auth: { apiKey: 'sk_test' },
+      fetch: async () => json({ data: null }),
+    });
+    await expect(client.gatewayConfigs.listWebhookLogs()).resolves.toEqual([]);
+    await expect(client.paymentMethods.checkoutOptions('cus_1')).resolves.toEqual([]);
+  });
+});

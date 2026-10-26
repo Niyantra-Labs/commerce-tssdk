@@ -28,6 +28,7 @@ import {
   NotificationTemplateService,
   NotificationService,
   ApplicationNotificationService,
+  PaymentMethodService,
   UsageService,
   WebhookEndpointService,
   WebhookEventService,
@@ -236,6 +237,10 @@ export class Client {
   /** In-app announcements and their feed. */
   get applicationNotifications() {
     return new ApplicationNotificationService(this.http);
+  }
+  /** Customers' saved payment methods and checkout options (backend only). */
+  get paymentMethods() {
+    return new PaymentMethodService(this.http);
   }
   /** For signed usage reports; requires an API key with the usage:report scope. */
   get usageApiKey(): string | undefined {

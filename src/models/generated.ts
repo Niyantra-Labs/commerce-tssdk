@@ -17,10 +17,6 @@ export interface ListResponse<T> {
   readonly data: ReadonlyArray<T>;
   readonly total: number;
 }
-export interface DataResponse<T> {
-  readonly data: T;
-}
-
 export interface Activation {
   readonly id: string;
   readonly license_id: string;
@@ -33,7 +29,7 @@ export interface Activation {
   readonly deactivated_at?: string | null;
   readonly deactivation_reason?: string | null;
   readonly last_check_in_at?: string | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -48,7 +44,6 @@ export interface ActivateParams {
   cores?: number | null;
   memory_mb?: number | null;
   environment?: string | null;
-  metadata?: Metadata;
 }
 
 export interface ActivateResponse {
@@ -64,9 +59,11 @@ export interface DeactivateByKeyParams {
   reason?: string;
 }
 
-export interface ActivationListParams extends ListParams {
+/** Filters the activations list handler reads. */
+export interface ActivationListParams extends PageParams {
   license_id?: string;
   machine_id?: string;
+  status?: string;
 }
 
 export interface Addon {
@@ -74,15 +71,15 @@ export interface Addon {
   readonly product_id: string;
   readonly name: string;
   readonly slug: string;
+  readonly description?: string | null;
   readonly price_cents: number;
   readonly currency: string;
   readonly addon_type: string;
   readonly billing_mode: string;
-  readonly entitlements?: Metadata;
-  readonly compatible_plan_ids?: ReadonlyArray<string>;
+  readonly entitlements: Metadata | null;
+  readonly compatible_plan_ids: ReadonlyArray<string> | null;
   readonly sort_order: number;
   readonly status: string;
-  readonly metadata?: Metadata;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -91,19 +88,20 @@ export interface AddonCreateParams {
   product_id: string;
   name: string;
   slug: string;
-  price_cents: number;
-  currency: string;
-  addon_type: string;
-  billing_mode: string;
+  description?: string | null;
+  price_cents?: number;
+  currency?: string;
+  addon_type?: string;
+  billing_mode?: string;
   entitlements?: Metadata;
   compatible_plan_ids?: ReadonlyArray<string>;
-  sort_order?: number | null;
-  metadata?: Metadata;
+  sort_order?: number;
 }
 
 export interface AddonUpdateParams {
   name?: string | null;
   slug?: string | null;
+  description?: string | null;
   price_cents?: number | null;
   currency?: string | null;
   addon_type?: string | null;
@@ -112,7 +110,6 @@ export interface AddonUpdateParams {
   compatible_plan_ids?: ReadonlyArray<string>;
   sort_order?: number | null;
   status?: string | null;
-  metadata?: Metadata;
 }
 
 export interface AddonListParams extends ListParams {
@@ -123,16 +120,20 @@ export interface LicenseAddon {
   readonly id: string;
   readonly license_id: string;
   readonly addon_id: string;
+  readonly quantity: number;
+  readonly status: string;
   readonly purchased_at: string;
   readonly expires_at?: string | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
+  readonly addon?: Addon | null;
 }
 
 export interface LicenseAddonPurchaseParams {
   addon_id: string;
-  metadata?: Metadata;
+  quantity?: number;
+  expires_at?: string | null;
 }
 
 export interface CommissionPlan {
@@ -444,12 +445,12 @@ export interface CommissionPayoutReverseParams {
 export interface Application {
   readonly id: string;
   readonly org_id: string;
-  readonly product_id: string;
+  readonly product_id?: string | null;
   readonly name: string;
   readonly description?: string | null;
   readonly environment: string;
   readonly status: string;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -459,23 +460,23 @@ export interface ApplicationCreateParams {
   product_id?: string | null;
   name: string;
   description?: string | null;
-  environment: string;
-  metadata?: Metadata;
+  environment?: string;
 }
 
 export interface ApplicationUpdateParams {
   name?: string | null;
   description?: string | null;
+  product_id?: string | null;
   environment?: string | null;
   status?: string | null;
-  metadata?: Metadata;
 }
 
-export interface ApplicationListParams extends ListParams {
-  org_id?: string;
+/** Filters the applications list handler reads. */
+export interface ApplicationListParams extends PageParams {
   product_id?: string;
   environment?: string;
   status?: string;
+  search?: string;
 }
 
 export interface APIKey {
@@ -484,23 +485,16 @@ export interface APIKey {
   readonly name: string;
   readonly public_key: string;
   readonly key_prefix: string;
-  readonly scopes?: ReadonlyArray<string>;
+  readonly scopes: ReadonlyArray<string> | null;
   readonly rate_limit_per_minute?: number | null;
   readonly environment: string;
-  readonly allowed_ips?: ReadonlyArray<string>;
   readonly status: string;
   readonly last_used_at?: string | null;
-  readonly last_used_ip?: string | null;
   readonly expires_at?: string | null;
   readonly revoked_at?: string | null;
   readonly revoked_reason?: string | null;
   readonly created_at: string;
   readonly updated_at: string;
-}
-
-export interface APIKeyCreateResult {
-  readonly api_key?: APIKey | null;
-  readonly secret_key: string;
 }
 
 /**
@@ -521,7 +515,8 @@ export interface APIKeyCreateParams {
   expires_at?: string | null;
 }
 
-export interface APIKeyListParams extends ListParams {
+/** Filters the api-keys list handler reads. */
+export interface APIKeyListParams extends PageParams {
   application_id?: string;
   environment?: string;
   status?: string;
@@ -533,14 +528,14 @@ export interface APIKeyRevokeParams {
 
 export interface AuditLog {
   readonly id: string;
-  readonly org_id: string;
+  readonly org_id?: string | null;
   readonly actor_id?: string | null;
   readonly actor_type: string;
-  readonly actor_display: string;
+  readonly actor_display?: string | null;
   readonly action: string;
-  readonly target_type: string;
-  readonly target_id: string;
-  readonly target_display: string;
+  readonly target_type?: string | null;
+  readonly target_id?: string | null;
+  readonly target_display?: string | null;
   readonly changes?: Metadata;
   readonly previous_state?: Metadata;
   readonly metadata?: Metadata;
@@ -549,21 +544,26 @@ export interface AuditLog {
   readonly correlation_id?: string | null;
   readonly request_id?: string | null;
   readonly severity: string;
-  readonly category: string;
+  readonly category?: string | null;
   readonly created_at: string;
 }
 
-export interface AuditLogListParams extends ListParams {
+/** Filters the audit-logs list handler reads. */
+export interface AuditLogListParams extends PageParams {
   action?: string;
+  category?: string;
+  severity?: string;
+  actor_type?: string;
+  actor_id?: string;
   target_type?: string;
   target_id?: string;
-  actor_id?: string;
-  severity?: string;
-  category?: string;
-}
-
-export interface SigningKeyResponse {
-  readonly public_key: string;
+  correlation_id?: string;
+  request_id?: string;
+  search?: string;
+  /** RFC 3339 lower bound on created_at. */
+  created_from?: string;
+  /** RFC 3339 upper bound on created_at. */
+  created_to?: string;
 }
 
 export interface Customer {
@@ -575,8 +575,8 @@ export interface Customer {
   readonly email: string;
   readonly phone?: string | null;
   readonly company_name?: string | null;
-  readonly billing_address?: Address;
-  readonly shipping_address?: Address;
+  readonly billing_address?: Metadata;
+  readonly shipping_address?: Metadata;
   readonly tax_id?: string | null;
   readonly currency: string;
   readonly locale: string;
@@ -584,44 +584,39 @@ export interface Customer {
   readonly churned_at?: string | null;
   readonly churn_reason?: string | null;
   readonly notes?: string | null;
-  readonly tags?: ReadonlyArray<string>;
-  readonly metadata?: Metadata;
+  readonly tags: ReadonlyArray<string> | null;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
 
 export interface CustomerCreateParams {
   org_id: string;
+  external_id?: string | null;
   name: string;
   email: string;
-  external_id?: string | null;
   phone?: string | null;
   company_name?: string | null;
-  billing_address?: Address;
-  shipping_address?: Address;
+  billing_address?: Metadata;
+  shipping_address?: Metadata;
   tax_id?: string | null;
-  currency: string;
-  locale?: string | null;
+  currency?: string;
   notes?: string | null;
   tags?: ReadonlyArray<string>;
-  metadata?: Metadata;
 }
 
 export interface CustomerUpdateParams {
   name?: string | null;
   email?: string | null;
-  external_id?: string | null;
   phone?: string | null;
   company_name?: string | null;
-  billing_address?: Address;
-  shipping_address?: Address;
+  billing_address?: Metadata;
+  shipping_address?: Metadata;
   tax_id?: string | null;
   currency?: string | null;
-  locale?: string | null;
   status?: string | null;
   notes?: string | null;
   tags?: ReadonlyArray<string>;
-  metadata?: Metadata;
 }
 
 export type CustomerListParams = ListParams;
@@ -644,7 +639,7 @@ export interface ContactCreateParams {
   email?: string | null;
   phone?: string | null;
   role?: string | null;
-  is_primary?: boolean | null;
+  is_primary?: boolean;
   notes?: string | null;
 }
 
@@ -656,8 +651,8 @@ export interface Entitlement {
   readonly addon_id?: string | null;
   readonly feature_key: string;
   readonly enabled: boolean;
-  readonly value?: unknown;
-  readonly config_payload?: Metadata;
+  readonly value?: string | null;
+  readonly config_payload: Metadata | null;
   readonly seat_limit?: number | null;
   readonly usage_cap?: number | null;
   readonly source: string;
@@ -667,24 +662,26 @@ export interface Entitlement {
   readonly updated_at: string;
 }
 
+/** Set exactly one source: plan_id, license_id, or addon_id. */
 export interface EntitlementCreateParams {
   product_id: string;
   plan_id?: string | null;
   license_id?: string | null;
   addon_id?: string | null;
   feature_key: string;
-  enabled?: boolean | null;
-  value?: unknown;
+  enabled?: boolean;
+  value?: string | null;
   config_payload?: Metadata;
   seat_limit?: number | null;
   usage_cap?: number | null;
+  source?: string;
   expires_at?: string | null;
   version_constraint?: string | null;
 }
 
 export interface EntitlementUpdateParams {
   enabled?: boolean | null;
-  value?: unknown;
+  value?: string | null;
   config_payload?: Metadata;
   seat_limit?: number | null;
   usage_cap?: number | null;
@@ -692,15 +689,19 @@ export interface EntitlementUpdateParams {
   version_constraint?: string | null;
 }
 
-export interface EntitlementListParams extends ListParams {
+/** Filters the entitlements list handler reads. */
+export interface EntitlementListParams extends PageParams {
   product_id?: string;
   plan_id?: string;
+  license_id?: string;
+  addon_id?: string;
+  feature_key?: string;
+  source?: string;
 }
 
 export interface EntitlementOverrideParams {
   feature_key: string;
   enabled?: boolean;
-  /** The server stores the override value as a string. */
   value?: string | null;
   config_payload?: Metadata;
   seat_limit?: number | null;
@@ -717,15 +718,15 @@ export interface Invoice {
   readonly order_id?: string | null;
   readonly subscription_id?: string | null;
   readonly invoice_number: string;
-  readonly line_items?: ReadonlyArray<LineItem>;
+  readonly line_items: ReadonlyArray<InvoiceLineItem> | null;
   readonly subtotal_cents: number;
   readonly discount_cents: number;
   readonly tax_cents: number;
+  readonly tax_details: Metadata | null;
   readonly total_cents: number;
   readonly amount_due_cents: number;
   readonly amount_paid_cents: number;
   readonly currency: string;
-  readonly tax_details?: Metadata;
   readonly status: string;
   readonly due_date?: string | null;
   readonly issued_at?: string | null;
@@ -733,17 +734,19 @@ export interface Invoice {
   readonly voided_at?: string | null;
   readonly pdf_url?: string | null;
   readonly pdf_generated_at?: string | null;
-  readonly billing_details?: Metadata;
+  readonly billing_details: Metadata | null;
   readonly notes?: string | null;
   readonly footer?: string | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
 
-export interface InvoiceListParams extends ListParams {
+/** Filters the invoices list handler reads. */
+export interface InvoiceListParams extends PageParams {
   customer_id?: string;
-  subscription_id?: string;
+  status?: string;
+  search?: string;
 }
 
 export interface License {
@@ -771,7 +774,7 @@ export interface License {
   readonly revoked_at?: string | null;
   readonly revoke_reason?: string | null;
   readonly notes?: string | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -780,15 +783,14 @@ export interface LicenseCreateParams {
   product_id: string;
   customer_id: string;
   plan_id?: string | null;
-  license_type: string;
+  license_type?: string;
   expires_at?: string | null;
   maintenance_expires_at?: string | null;
-  max_activations?: number | null;
-  perpetual?: boolean | null;
+  max_activations?: number;
+  perpetual?: boolean;
   perpetual_fallback_version?: string | null;
   seat_limit?: number | null;
   notes?: string | null;
-  metadata?: Metadata;
 }
 
 export interface LicenseBulkCreateParams extends LicenseCreateParams {
@@ -798,11 +800,6 @@ export interface LicenseBulkCreateParams extends LicenseCreateParams {
 export interface LicenseBulkCreateResponse {
   readonly data: ReadonlyArray<License>;
   readonly count: number;
-}
-
-export interface LicenseUpdateParams {
-  notes?: string | null;
-  metadata?: Metadata;
 }
 
 export interface LicenseListParams extends ListParams {
@@ -849,7 +846,7 @@ export interface Machine {
   readonly ip_address?: string | null;
   readonly cores?: number | null;
   readonly memory_mb?: number | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly first_seen_at: string;
   readonly last_seen_at: string;
   readonly created_at: string;
@@ -862,10 +859,8 @@ export interface MachineCreateParams {
   os?: string | null;
   os_version?: string | null;
   arch?: string | null;
-  ip_address?: string | null;
   cores?: number | null;
   memory_mb?: number | null;
-  metadata?: Metadata;
 }
 
 export interface MachineUpdateParams {
@@ -873,13 +868,15 @@ export interface MachineUpdateParams {
   os?: string | null;
   os_version?: string | null;
   arch?: string | null;
-  ip_address?: string | null;
   cores?: number | null;
   memory_mb?: number | null;
-  metadata?: Metadata;
 }
 
-export type MachineListParams = ListParams;
+/** Filters the machines list handler reads. */
+export interface MachineListParams extends PageParams {
+  search?: string;
+  arch?: string;
+}
 
 export interface OfflineCertificate {
   readonly id: string;
@@ -896,35 +893,19 @@ export interface OfflineCertificate {
   readonly requires_approval: boolean;
   readonly approved_by?: string | null;
   readonly approved_at?: string | null;
-  readonly revoked_by?: string | null;
   readonly revoked_at?: string | null;
+  readonly revoked_by?: string | null;
   readonly revoke_reason?: string | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
 
-export interface OfflineCertificateCreateParams {
-  license_id: string;
-  machine_id: string;
-  policy_duration_hours?: number | null;
-  grace_hours?: number | null;
-  metadata?: Metadata;
-}
-
-export interface OfflineCertificateVerifyParams {
-  certificate: string;
-}
-
-export interface OfflineCertificateVerifyResponse {
-  readonly valid: boolean;
-  readonly certificate?: OfflineCertificate | null;
-  readonly error?: string;
-}
-
-export interface OfflineCertificateListParams extends ListParams {
+/** Filters the offline-certificates list handler reads. */
+export interface OfflineCertificateListParams extends PageParams {
   license_id?: string;
   machine_id?: string;
+  status?: string;
 }
 
 export interface OfflineCertificateRevokeParams {
@@ -942,13 +923,13 @@ export interface Order {
   readonly coupon_id?: string | null;
   readonly order_number: string;
   readonly order_type: string;
-  readonly line_items?: ReadonlyArray<LineItem>;
+  readonly line_items: ReadonlyArray<LineItem> | null;
   readonly subtotal_cents: number;
   readonly discount_cents: number;
   readonly tax_cents: number;
   readonly total_cents: number;
   readonly currency: string;
-  readonly tax_details?: Metadata;
+  readonly tax_details: Metadata | null;
   readonly gateway?: string | null;
   readonly gateway_order_id?: string | null;
   readonly status: string;
@@ -956,14 +937,14 @@ export interface Order {
   readonly fulfilled_at?: string | null;
   readonly reseller_id?: string | null;
   readonly notes?: string | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
 
 export interface LineItem {
   readonly type: string;
-  readonly reference_id: string;
+  readonly reference_id?: string;
   readonly description: string;
   readonly quantity: number;
   readonly unit_amount_cents: number;
@@ -971,29 +952,13 @@ export interface LineItem {
   readonly metadata?: Metadata;
 }
 
-export interface OrderCreateParams {
-  customer_id: string;
-  product_id?: string | null;
-  plan_id?: string | null;
-  subscription_id?: string | null;
-  addon_id?: string | null;
-  coupon_id?: string | null;
-  order_type: string;
-  line_items: ReadonlyArray<LineItem>;
-  currency: string;
-  gateway?: string | null;
-  notes?: string | null;
-  metadata?: Metadata;
-}
-
-export interface OrderUpdateParams {
-  notes?: string | null;
-  metadata?: Metadata;
-}
-
-export interface OrderListParams extends ListParams {
+/** Filters the orders list handler reads. */
+export interface OrderListParams extends PageParams {
   customer_id?: string;
   product_id?: string;
+  status?: string;
+  gateway?: string;
+  search?: string;
 }
 
 export interface Organization {
@@ -1003,15 +968,16 @@ export interface Organization {
   readonly logo_url?: string | null;
   readonly website?: string | null;
   readonly billing_email?: string | null;
-  readonly billing_address?: Address;
+  readonly billing_address?: Metadata;
   readonly tax_id?: string | null;
   readonly currency: string;
   readonly timezone: string;
   readonly status: string;
-  readonly settings?: Metadata;
-  readonly metadata?: Metadata;
+  readonly settings: Metadata | null;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
+  readonly deleted_at?: string | null;
 }
 
 export interface OrganizationCreateParams {
@@ -1020,12 +986,10 @@ export interface OrganizationCreateParams {
   logo_url?: string | null;
   website?: string | null;
   billing_email?: string | null;
-  billing_address?: Address;
+  billing_address?: Metadata;
   tax_id?: string | null;
-  currency: string;
-  timezone: string;
-  settings?: Metadata;
-  metadata?: Metadata;
+  currency?: string;
+  timezone?: string;
 }
 
 export interface OrganizationUpdateParams {
@@ -1034,13 +998,11 @@ export interface OrganizationUpdateParams {
   logo_url?: string | null;
   website?: string | null;
   billing_email?: string | null;
-  billing_address?: Address;
+  billing_address?: Metadata;
   tax_id?: string | null;
   currency?: string | null;
   timezone?: string | null;
   status?: string | null;
-  settings?: Metadata;
-  metadata?: Metadata;
 }
 
 export type OrganizationListParams = ListParams;
@@ -1069,23 +1031,32 @@ export interface Payment {
   readonly receipt_url?: string | null;
   readonly attempt_count: number;
   readonly next_retry_at?: string | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
 
-export interface PaymentListParams extends ListParams {
+/** Filters the payments list handler reads. */
+export interface PaymentListParams extends PageParams {
   order_id?: string;
+  customer_id?: string;
+  status?: string;
+  gateway?: string;
+  search?: string;
 }
 
 export interface PaymentRefundParams {
-  amount_cents?: number | null;
-  reason?: string | null;
+  amount_cents?: number;
+  reason?: string;
+  metadata?: Metadata;
 }
 
 export interface PaymentReconcileParams {
   status: string;
   gateway_payment_id?: string | null;
+  failure_reason?: string | null;
+  failure_code?: string | null;
+  receipt_url?: string | null;
   metadata?: Metadata;
 }
 
@@ -1094,52 +1065,56 @@ export interface Plan {
   readonly product_id: string;
   readonly name: string;
   readonly slug: string;
+  readonly description?: string | null;
   readonly plan_type: string;
-  readonly billing_interval: string;
+  readonly billing_interval?: string | null;
   readonly price_cents: number;
   readonly currency: string;
   readonly setup_fee_cents: number;
   readonly seat_based: boolean;
   readonly seat_price_cents: number;
-  readonly min_seats?: number | null;
+  readonly min_seats: number;
   readonly max_seats?: number | null;
-  readonly trial_days?: number | null;
+  readonly trial_days: number;
   readonly max_activations?: number | null;
-  readonly features?: Metadata;
-  readonly limits?: Metadata;
+  readonly features: Metadata | null;
+  readonly limits: Metadata | null;
   readonly is_popular: boolean;
   readonly sort_order: number;
+  readonly gateway_config_id?: string | null;
   readonly status: string;
-  readonly metadata?: Metadata;
   readonly created_at: string;
   readonly updated_at: string;
 }
 
+/** Plans are created as drafts; set status to "active" to sell and compare them. */
 export interface PlanCreateParams {
   product_id: string;
   name: string;
   slug: string;
-  plan_type: string;
-  billing_interval: string;
-  price_cents: number;
-  currency: string;
-  setup_fee_cents?: number | null;
-  seat_based?: boolean | null;
-  seat_price_cents?: number | null;
-  min_seats?: number | null;
+  description?: string | null;
+  plan_type?: string;
+  billing_interval?: string | null;
+  price_cents?: number;
+  currency?: string;
+  setup_fee_cents?: number;
+  seat_based?: boolean;
+  seat_price_cents?: number;
+  min_seats?: number;
   max_seats?: number | null;
-  trial_days?: number | null;
+  trial_days?: number;
   max_activations?: number | null;
   features?: Metadata;
   limits?: Metadata;
-  is_popular?: boolean | null;
-  sort_order?: number | null;
-  metadata?: Metadata;
+  is_popular?: boolean;
+  sort_order?: number;
+  gateway_config_id?: string | null;
 }
 
 export interface PlanUpdateParams {
   name?: string | null;
   slug?: string | null;
+  description?: string | null;
   plan_type?: string | null;
   billing_interval?: string | null;
   price_cents?: number | null;
@@ -1156,15 +1131,11 @@ export interface PlanUpdateParams {
   is_popular?: boolean | null;
   sort_order?: number | null;
   status?: string | null;
-  metadata?: Metadata;
+  gateway_config_id?: string | null;
 }
 
 export interface PlanListParams extends ListParams {
   product_id?: string;
-}
-
-export interface PlanCompareParams {
-  plan_ids: ReadonlyArray<string>;
 }
 
 export interface Product {
@@ -1182,7 +1153,9 @@ export interface Product {
   readonly max_activations_default?: number | null;
   readonly maintenance_duration_months?: number | null;
   readonly signing_key_id?: string | null;
-  readonly metadata?: Metadata;
+  readonly default_gateway_config_id?: string | null;
+  readonly allowed_gateways?: ReadonlyArray<string>;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -1192,14 +1165,15 @@ export interface ProductCreateParams {
   name: string;
   slug: string;
   description?: string | null;
-  product_type: string;
+  product_type?: string;
   logo_url?: string | null;
   website_url?: string | null;
   support_email?: string | null;
   default_license_type?: string | null;
   max_activations_default?: number | null;
   maintenance_duration_months?: number | null;
-  metadata?: Metadata;
+  default_gateway_config_id?: string | null;
+  allowed_gateways?: ReadonlyArray<string>;
 }
 
 export interface ProductUpdateParams {
@@ -1214,7 +1188,8 @@ export interface ProductUpdateParams {
   default_license_type?: string | null;
   max_activations_default?: number | null;
   maintenance_duration_months?: number | null;
-  metadata?: Metadata;
+  default_gateway_config_id?: string | null;
+  allowed_gateways?: ReadonlyArray<string>;
 }
 
 export type ProductListParams = ListParams;
@@ -1435,10 +1410,12 @@ export interface SubscriptionUpdateParams {
   metadata?: Metadata;
 }
 
-export interface SubscriptionListParams extends ListParams {
+/** Filters the subscriptions list handler reads. */
+export interface SubscriptionListParams extends PageParams {
   customer_id?: string;
   product_id?: string;
-  plan_id?: string;
+  status?: string;
+  search?: string;
 }
 
 export interface SubscriptionRenewParams {
@@ -1509,20 +1486,24 @@ export interface UsageMeterCreateParams {
   feature_key: string;
   name: string;
   description?: string | null;
-  meter_type: string;
-  unit_name: string;
-  reset_period: string;
+  meter_type?: string;
+  unit_name?: string;
+  reset_period?: string;
   soft_limit?: number | null;
   hard_limit?: number | null;
-  overage_allowed?: boolean | null;
-  overage_rate_cents?: number | null;
-  overage_currency?: string | null;
-  billing_model: string;
+  overage_allowed?: boolean;
+  overage_rate_cents?: number;
+  overage_currency?: string;
+  billing_model?: string;
 }
 
 export interface UsageMeterUpdateParams {
+  feature_key?: string | null;
   name?: string | null;
   description?: string | null;
+  meter_type?: string | null;
+  unit_name?: string | null;
+  reset_period?: string | null;
   soft_limit?: number | null;
   hard_limit?: number | null;
   overage_allowed?: boolean | null;
@@ -1538,25 +1519,11 @@ export interface UsageMeterListParams extends ListParams {
   reset_period?: string;
 }
 
-export interface UsageReport {
-  readonly license_key: string;
-  readonly feature_key: string;
-  readonly quantity: number;
-  readonly period_start: string;
-  readonly period_end: string;
-  readonly idempotency_key: string;
-  readonly client_version?: string | null;
-}
-
-export interface UsageReportBatch {
-  readonly reports: ReadonlyArray<UsageReport>;
-}
-
 export interface UsageSummary {
   readonly license_id: string;
-  readonly license_key: string;
-  readonly product_id: string;
-  readonly meter?: UsageMeter | null;
+  readonly license_key?: string;
+  readonly product_id?: string;
+  readonly meter: UsageMeter;
   readonly period_start: string;
   readonly period_end: string;
   readonly aggregate_total: number;
@@ -1569,12 +1536,15 @@ export interface UsageSummary {
   readonly latest_report_at?: string | null;
 }
 
+/** Adjustments apply to counter meters only. */
 export interface UsageAdjustmentParams {
   license_id: string;
   meter_id: string;
   period_start: string;
+  period_end: string;
   quantity_delta: number;
   reason: string;
+  metadata?: Metadata;
 }
 
 export interface UsageAdjustment {
@@ -1585,14 +1555,21 @@ export interface UsageAdjustment {
   readonly period_end: string;
   readonly quantity_delta: number;
   readonly reason: string;
+  readonly actor_account_id?: string | null;
+  readonly effective_at: string;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
 }
 
+/** Credits apply to prepaid meters only; entry_type defaults to "grant". */
 export interface UsageCreditParams {
   license_id: string;
   meter_id: string;
+  entry_type?: string;
   quantity: number;
   expires_at?: string | null;
+  source_ref?: string | null;
+  metadata?: Metadata;
 }
 
 export interface UsageCredit {
@@ -1602,6 +1579,8 @@ export interface UsageCredit {
   readonly entry_type: string;
   readonly quantity: number;
   readonly expires_at?: string | null;
+  readonly source_ref?: string | null;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
 }
 
@@ -1611,7 +1590,7 @@ export interface WebhookEndpoint {
   readonly url: string;
   readonly description?: string | null;
   readonly secret_prefix?: string | null;
-  readonly events?: ReadonlyArray<string>;
+  readonly events: ReadonlyArray<string> | null;
   readonly api_version?: string | null;
   readonly status: string;
   readonly consecutive_failures: number;
@@ -1619,9 +1598,10 @@ export interface WebhookEndpoint {
   readonly last_failure_at?: string | null;
   readonly disabled_at?: string | null;
   readonly disabled_reason?: string | null;
-  readonly metadata?: Metadata;
+  readonly metadata: Metadata | null;
   readonly created_at: string;
   readonly updated_at: string;
+  readonly deleted_at?: string | null;
 }
 
 export interface WebhookEndpointCreateParams {
@@ -1657,7 +1637,7 @@ export interface WebhookEvent {
   readonly endpoint_id: string;
   readonly event_type: string;
   readonly event_id: string;
-  readonly payload?: Metadata;
+  readonly payload: Metadata | null;
   readonly headers?: Metadata;
   readonly status: string;
   readonly attempts: number;
@@ -2125,4 +2105,94 @@ export interface EntitlementOverride {
   readonly version_constraint?: string | null;
   readonly created_at: string;
   readonly updated_at: string;
+}
+
+export interface InvoiceLineItem {
+  readonly type: string;
+  readonly reference_id?: string;
+  readonly description: string;
+  readonly quantity: number;
+  readonly unit_amount_cents: number;
+  readonly total_cents: number;
+  readonly metadata?: Metadata;
+}
+
+/** A customer's saved payment method: a gateway token plus display details (never raw card data). */
+export interface PaymentMethod {
+  readonly id: string;
+  readonly customer_id: string;
+  readonly org_id: string;
+  readonly gateway_config_id: string;
+  readonly provider: string;
+  readonly gateway_customer_id?: string | null;
+  readonly gateway_method_id?: string | null;
+  readonly method_type: string;
+  readonly display_name: string;
+  readonly last_four?: string | null;
+  readonly brand?: string | null;
+  readonly exp_month?: number | null;
+  readonly exp_year?: number | null;
+  readonly is_default: boolean;
+  readonly status: string;
+  readonly metadata?: Metadata;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+/** Save a tokenized payment method. org_id is the customer's organization and may be omitted; the gateway must belong to it. */
+export interface PaymentMethodCreateParams {
+  customer_id: string;
+  org_id?: string;
+  gateway_config_id: string;
+  provider: string;
+  gateway_customer_id?: string | null;
+  gateway_method_id?: string | null;
+  method_type?: string;
+  display_name?: string;
+  last_four?: string | null;
+  brand?: string | null;
+  exp_month?: number | null;
+  exp_year?: number | null;
+  is_default?: boolean;
+  metadata?: Metadata;
+}
+
+/** A gateway a customer can pay with, and their saved method for it if any. */
+export interface CheckoutOption {
+  readonly config_id: string;
+  readonly provider: string;
+  readonly display_name: string;
+  readonly saved_method_id?: string | null;
+  readonly saved_method_name?: string | null;
+}
+
+/** One inbound payment-provider webhook and how it was processed. */
+export interface GatewayWebhookLog {
+  readonly id: string;
+  readonly org_id?: string | null;
+  readonly provider: string;
+  readonly gateway_config_id?: string | null;
+  readonly event_id: string;
+  readonly event_type: string;
+  readonly normalized_type: string;
+  readonly status: string;
+  readonly http_status?: number | null;
+  readonly error_message?: string | null;
+  readonly processing_ms?: number | null;
+  readonly ip_address?: string | null;
+  readonly metadata?: Metadata;
+  readonly created_at: string;
+}
+
+/** Filters the payment-methods list handler reads. */
+export interface PaymentMethodListParams extends PageParams {
+  customer_id?: string;
+  provider?: string;
+  status?: string;
+}
+
+/** Filters for gateway webhook logs; the server returns the 50 most recent. */
+export interface GatewayWebhookLogListParams {
+  provider?: string;
+  status?: string;
 }

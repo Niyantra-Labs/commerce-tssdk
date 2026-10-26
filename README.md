@@ -101,7 +101,7 @@ Start the live server with `docker compose -f integration/compose.yml up -d --bu
 <!-- endpoints:start -->
 <!-- prettier-ignore-start -->
 
-Generated from the contract suite (203 methods). "Public" routes take the license key, signed token, or certificate as the credential; every other route needs an API key (scoped to its organization) or an operator token.
+Generated from the contract suite (210 methods). "Public" routes take the license key, signed token, or certificate as the credential; every other route needs an API key (scoped to its organization) or an operator token.
 
 <details><summary><code>client.organizations</code> (5)</summary>
 
@@ -495,7 +495,7 @@ Generated from the contract suite (203 methods). "Public" routes take the licens
 
 </details>
 
-<details><summary><code>client.gatewayConfigs</code> (7)</summary>
+<details><summary><code>client.gatewayConfigs</code> (8)</summary>
 
 | Method | Route | Response | Public |
 | --- | --- | --- | --- |
@@ -506,6 +506,7 @@ Generated from the contract suite (203 methods). "Public" routes take the licens
 | `delete` | `DELETE /api/v1/gateway-configs/{id}` | status |  |
 | `setDefault` | `POST /api/v1/gateway-configs/{id}/set-default` | object |  |
 | `test` | `POST /api/v1/gateway-configs/{id}/test` | JSON |  |
+| `listWebhookLogs` | `GET /api/v1/gateway-webhook-logs` | object |  |
 
 </details>
 
@@ -569,6 +570,19 @@ Generated from the contract suite (203 methods). "Public" routes take the licens
 | `update` | `PATCH /api/v1/application-notifications/{id}` | object |  |
 | `feed` | `POST /api/v1/application-notifications/feed` | object | yes |
 | `acknowledge` | `POST /api/v1/application-notifications/{id}/ack` | object | yes |
+
+</details>
+
+<details><summary><code>client.paymentMethods</code> (6)</summary>
+
+| Method | Route | Response | Public |
+| --- | --- | --- | --- |
+| `list` | `GET /api/v1/payment-methods` | page `{ data, total }` |  |
+| `create` | `POST /api/v1/payment-methods` | object |  |
+| `get` | `GET /api/v1/payment-methods/{id}` | object |  |
+| `setDefault` | `POST /api/v1/payment-methods/{id}/set-default` | status |  |
+| `delete` | `DELETE /api/v1/payment-methods/{id}` | status |  |
+| `checkoutOptions` | `GET /api/v1/checkout-options` | object |  |
 
 </details>
 

@@ -931,6 +931,22 @@ export class GatewayConfigService extends ResourceService<
   setDefault(id: string, options?: RequestOptions): Promise<M.GatewayConfig> {
     return this.action(id, 'set-default', undefined, options);
   }
+  /** The 50 most recent inbound provider webhooks for the caller's organization (not paginated). */
+  async listWebhookLogs(
+    params?: M.GatewayWebhookLogListParams,
+    options?: RequestOptions,
+  ): Promise<ReadonlyArray<M.GatewayWebhookLog>> {
+    const logs: ReadonlyArray<M.GatewayWebhookLog> | null = await this.http.request(
+      {
+        method: 'GET',
+        path: '/gateway-webhook-logs',
+        query: params as Record<string, string | undefined>,
+        kind: 'data',
+      },
+      options,
+    );
+    return logs ?? []; // servers before 2026-10-26 encode an empty list as null
+  }
   /** Check the stored credentials against the provider and record the health result. */
   test(id: string, options?: RequestOptions): Promise<C.GatewayConfigTestResult> {
     return this.http.request({ method: 'POST', path: `${this.item(id)}/test` }, options);
@@ -1161,5 +1177,53 @@ export class ApplicationNotificationService extends CollectionService<
     options?: RequestOptions,
   ): Promise<M.ApplicationNotificationReadState> {
     return this.action(id, 'ack', input, options);
+  }
+}
+
+/**
+ * Customers' saved payment methods (gateway tokens and display details only;
+ * the SDK never handles raw card data). Backend use only.
+ */
+export class PaymentMethodService extends CollectionService<
+  M.PaymentMethod,
+  M.PaymentMethodListParams
+> {
+  constructor(http: Transport) {
+    super(http, '/payment-methods');
+  }
+  /** Save a tokenized payment method for a customer. */
+  create(input: M.PaymentMethodCreateParams, options?: RequestOptions): Promise<M.PaymentMethod> {
+    return this.http.request(
+      { method: 'POST', path: '/payment-methods', body: input, kind: 'data' },
+      options,
+    );
+  }
+  /** Make this the customer's default payment method; returns `{ status }`. */
+  setDefault(id: string, options?: RequestOptions): Promise<C.StatusResult> {
+    return this.http.request({ method: 'POST', path: `${this.item(id)}/set-default` }, options);
+  }
+  /** Delete a saved payment method. */
+  delete(id: string, options?: RequestOptions): Promise<void> {
+    return this.http.request({ method: 'DELETE', path: this.item(id), kind: 'none' }, options);
+  }
+  /**
+   * Gateways the customer can pay with — limited to the product's allowed
+   * gateways when `productId` is given — with their saved method for each.
+   */
+  async checkoutOptions(
+    customerId: string,
+    productId?: string,
+    options?: RequestOptions,
+  ): Promise<ReadonlyArray<M.CheckoutOption>> {
+    const found: ReadonlyArray<M.CheckoutOption> | null = await this.http.request(
+      {
+        method: 'GET',
+        path: '/checkout-options',
+        query: { customer_id: customerId, product_id: productId },
+        kind: 'data',
+      },
+      options,
+    );
+    return found ?? []; // servers before 2026-10-26 encode no options as null
   }
 }
