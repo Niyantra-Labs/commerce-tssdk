@@ -41,7 +41,7 @@ async function importEd25519PublicKey(publicKeyBase64: string): Promise<CryptoKe
 export class OfflineVerifier {
   private readonly publicKeyPromise: Promise<CryptoKey>;
 
-  /** @param publicKeyBase64 the server's raw Ed25519 public key, standard base64 (from `client.system.signingKey()`). */
+  /** @param publicKeyBase64 - The server's raw Ed25519 public key, standard base64 (from `client.system.signingKey()`). */
   constructor(publicKeyBase64: string) {
     if (!publicKeyBase64) {
       throw new CommerceValidationError('OfflineVerifier requires the server signing public key');
@@ -50,9 +50,9 @@ export class OfflineVerifier {
   }
 
   /**
-   * @param certificateBase64 the `certificate` field from an issued `OfflineCertificate`.
-   * @param signatureBase64 the `signature` returned alongside that certificate at issue/reissue time.
-   * @param fingerprint the requesting machine's fingerprint, to check binding.
+   * @param certificateBase64 - The `certificate` field from an issued `OfflineCertificate`.
+   * @param signatureBase64 - The `signature` returned alongside that certificate at issue/reissue time.
+   * @param fingerprint - The requesting machine's fingerprint, to check binding.
    */
   async verify(
     certificateBase64: string,
