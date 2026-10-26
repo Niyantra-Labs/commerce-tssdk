@@ -49,13 +49,15 @@
     "contract:manifest": "python3 -I scripts/route-manifest.py ${COMMERCE_REPO:-../commerce} > test/fixtures/routes.json",
     "contract:check": "python3 -I scripts/route-manifest.py ${COMMERCE_REPO:-../commerce} | diff -u test/fixtures/routes.json - && echo \"route manifest matches the server\"",
     "test:runtimes": "npm run build && node integration/runtime-smoke.mjs",
-    "test:package": "npm run build && node integration/package-smoke.mjs"
+    "test:package": "npm run build && node integration/package-smoke.mjs",
+    "test:bundle": "node scripts/check-bundle.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/express": "5.0.6",
     "@types/node": "^20.0.0",
     "@vitest/coverage-v8": "4.1.11",
+    "esbuild": "0.25.12",
     "eslint": "^9.0.0",
     "msw": "2.15.0",
     "prettier": "^3.0.0",
