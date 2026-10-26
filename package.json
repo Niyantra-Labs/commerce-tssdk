@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "TypeScript SDK for Niyantra Commerce",
+  "author": "Niyantra Labs",
   "license": "MIT",
   "type": "module",
   "repository": {
