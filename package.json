@@ -44,7 +44,8 @@
     "docs": "typedoc --out .typedoc src/index.ts",
     "audit": "npm audit --omit=dev",
     "contract:manifest": "python3 -I scripts/route-manifest.py ${COMMERCE_REPO:-../commerce} > test/fixtures/routes.json",
-    "contract:check": "python3 -I scripts/route-manifest.py ${COMMERCE_REPO:-../commerce} | diff -u test/fixtures/routes.json - && echo \"route manifest matches the server\""
+    "contract:check": "python3 -I scripts/route-manifest.py ${COMMERCE_REPO:-../commerce} | diff -u test/fixtures/routes.json - && echo \"route manifest matches the server\"",
+    "test:runtimes": "npm run build && node integration/runtime-smoke.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

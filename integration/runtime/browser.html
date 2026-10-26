@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Commerce SDK browser runtime check</title>
+<script type="module">
+  import { runChecks } from './checks.mjs';
+  const config = await (await fetch('/config')).json();
+  const name = `browser ${navigator.userAgent.match(/(Chrome|Firefox|Safari)\/[\d.]+/)?.[0] ?? ''}`;
+  const results = await runChecks(config, { name, browser: true });
+  await fetch('/results', { method: 'POST', body: JSON.stringify({ runtime: name, results }) });
+</script>

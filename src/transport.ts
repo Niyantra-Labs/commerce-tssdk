@@ -203,8 +203,11 @@ export class Transport {
     if (/\/api\/v1\/?$/.test(base.pathname))
       throw new CommerceValidationError('Base URL must exclude /api/v1');
     this.base = base;
-    this.fetcher = options.fetch ?? globalThis.fetch;
-    if (!this.fetcher) throw new CommerceValidationError('fetch is unavailable');
+    const fetcher = options.fetch ?? globalThis.fetch;
+    if (!fetcher) throw new CommerceValidationError('fetch is unavailable');
+    // Never call fetch as a method of another object: browsers throw
+    // "Illegal invocation" when window.fetch runs with a foreign `this`.
+    this.fetcher = (input, init) => fetcher(input, init);
     this.auth = auth;
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.maxRetries = options.maxRetries ?? 2;

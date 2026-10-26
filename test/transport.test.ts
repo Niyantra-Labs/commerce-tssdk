@@ -274,3 +274,20 @@ describe('multipart and streamed responses', () => {
     ).rejects.toBeInstanceOf(CommerceValidationError);
   });
 });
+
+describe('fetch binding', () => {
+  it('never calls fetch with the transport as `this` (browsers throw Illegal invocation)', async () => {
+    const receivers: unknown[] = [];
+    const fetcher = function (this: unknown) {
+      receivers.push(this);
+      return Promise.resolve(
+        new Response(JSON.stringify({ status: 'ok' }), {
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    } as unknown as typeof fetch;
+    const client = new Client({ auth: { apiKey: 'secret' }, fetch: fetcher });
+    await client.system.health();
+    expect(receivers).toEqual([undefined]);
+  });
+});
