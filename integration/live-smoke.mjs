@@ -4,10 +4,12 @@ import console from 'node:console';
 import { createHash, randomUUID } from 'node:crypto';
 import http from 'node:http';
 import process from 'node:process';
-import { setTimeout } from 'node:timers';
+import { clearTimeout, setTimeout } from 'node:timers';
 import { URL } from 'node:url';
 import { TextEncoder } from 'node:util';
 import { Client, OfflineVerifier, WebhookVerifier } from '../dist/index.js';
+// Not exported from the package root until the codex/observability merge.
+import { isKnownWebhookEvent } from '../dist/webhook-events.js';
 
 const baseUrl = process.env.COMMERCE_TEST_URL ?? 'http://127.0.0.1:19094';
 const suffix = randomUUID().slice(0, 12);
@@ -316,6 +318,7 @@ async function main() {
   passed('affiliate create/reject (requires a JSON body on the server)');
 
   await apiKeyScopes({ api: authenticated, application, license });
+  await typedWebhookEvents({ api: authenticated, organization, customer });
   await domainLifecycles({ api: authenticated, organization, product, customer });
 
   await serverExtensions({ api: authenticated, organization, product, customer, license });
@@ -344,6 +347,89 @@ async function main() {
     license,
     affiliate,
   });
+}
+
+/** Collects deliveries until one of each wanted event type has arrived (or 20s pass). */
+function collectDeliveries(wanted) {
+  const received = new Map();
+  let resolveAll;
+  const done = new Promise((resolve) => (resolveAll = resolve));
+  const server = http.createServer((req, res) => {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      res.end('ok');
+      const body = Buffer.concat(chunks);
+      const type = JSON.parse(body.toString('utf8')).type;
+      if (wanted.includes(type) && !received.has(type))
+        received.set(type, { headers: req.headers, body });
+      if (wanted.every((t) => received.has(t))) resolveAll();
+    });
+  });
+  const timer = setTimeout(resolveAll, 20000);
+  return { server, received, done: done.then(() => clearTimeout(timer)) };
+}
+
+/** Real license and subscription deliveries narrow to their typed payloads. */
+async function typedWebhookEvents({ api, organization, customer }) {
+  const id = randomUUID().slice(0, 8);
+  // Its own product, so its active plan does not join other sections' plan comparisons.
+  const product = await api.products.create({
+    org_id: organization.id,
+    name: `Events product ${id}`,
+    slug: `events-product-${id}`,
+    product_type: 'saas',
+  });
+  const wanted = ['license.issued', 'subscription.created'];
+  const { server, received, done } = collectDeliveries(wanted);
+  const port = await listen(server);
+  const endpoint = await api.webhookEndpoints.create({
+    org_id: organization.id,
+    url: `http://host.docker.internal:${port}/events`,
+    events: wanted,
+  });
+  const verifier = new WebhookVerifier(endpoint.secret);
+
+  const license = await api.licenses.create({ product_id: product.id, customer_id: customer.id });
+  const plan = await api.plans.create({
+    product_id: product.id,
+    name: `Events ${id}`,
+    slug: `events-${id}`,
+    plan_type: 'subscription',
+    billing_interval: 'monthly',
+    price_cents: 900,
+    currency: 'USD',
+  });
+  await api.plans.update(plan.id, { status: 'active' });
+  const { subscription } = await api.subscriptions.create({
+    customer_id: customer.id,
+    product_id: product.id,
+    plan_id: plan.id,
+    quantity: 1,
+  });
+  await done;
+  server.close();
+
+  const verify = async (type) => {
+    const delivery = received.get(type);
+    assert.ok(delivery, `no ${type} delivery within 20s`);
+    const headers = Object.fromEntries(
+      Object.entries(delivery.headers).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
+    );
+    const event = await verifier.verify(headers, delivery.body);
+    assert.ok(isKnownWebhookEvent(event), `${type} is not narrowed as a known event`);
+    return event;
+  };
+  const issued = await verify('license.issued');
+  assert.equal(issued.type, 'license.issued');
+  assert.equal(issued.data.license.id, license.id);
+  assert.equal(typeof issued.data.license.license_key, 'string');
+  const started = await verify('subscription.created');
+  assert.equal(started.data.subscription.id, subscription.id);
+  assert.equal(started.data.subscription.plan_id, plan.id);
+  passed(
+    'typed webhook events (real license.issued and subscription.created deliveries narrow to their payloads)',
+  );
 }
 
 /** API-key scopes: read vs write, usage-only keys, and no minting broader keys. */
