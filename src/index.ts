@@ -10,6 +10,7 @@ export type {
   ResponseHookEvent,
   RetryHookEvent,
   TransportHooks,
+  RateLimitClock,
 } from './transport.js';
 export * from './errors.js';
 export * from './models/generated.js';

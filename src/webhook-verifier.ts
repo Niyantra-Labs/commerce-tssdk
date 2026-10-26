@@ -38,6 +38,7 @@ export class WebhookVerifier {
     )
       throw new CommerceValidationError('Invalid webhook verifier configuration');
     this.secrets = [...secrets];
+    Object.defineProperty(this, 'secrets', { enumerable: false });
   }
 
   /** Verify a delivery's v1 signature and timestamp over the raw body, then parse the event envelope. Rejects with `CommerceCryptoError`. */

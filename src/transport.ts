@@ -34,6 +34,12 @@ export interface TransportHooks {
   onRetry?: (event: Readonly<RetryHookEvent>) => void | Promise<void>;
 }
 
+/** Injectable time source for deterministic client rate-limit tests. */
+export interface RateLimitClock {
+  now(): number;
+  sleep(ms: number, signal: AbortSignal): Promise<void>;
+}
+
 function emitHook<T>(
   hook: ((event: Readonly<T>) => void | Promise<void>) | undefined,
   event: T,
@@ -80,7 +86,7 @@ export interface ClientOptions {
   /** Retries for GET requests on 429/502/503/504 and network failures. Mutations are never retried. */
   maxRetries?: number;
   /** Optional per-client request budget. */
-  rateLimit?: { requestsPerSecond: number; burst?: number };
+  rateLimit?: { requestsPerSecond: number; burst?: number; clock?: RateLimitClock };
   /** Synchronous, best-effort metadata hooks. Keep callbacks fast; returned promises are not awaited. */
   hooks?: TransportHooks;
   /** All credentials are intended for trusted runtimes. */
@@ -219,6 +225,53 @@ function mentions(error: unknown, secret: string | undefined): boolean {
   return false;
 }
 
+const INSPECT = Symbol.for('nodejs.util.inspect.custom');
+const SECRET_FIELD =
+  /^(?:secret|secret_key|license_key|license_keys|signature|certificate|token|access_token|refresh_token|api_key|password|credentials|client_secret|idempotency_key|download_url|signed_url)$/i;
+
+function gatherSecrets(value: unknown, secrets: Set<string>, sensitive = false): void {
+  if (typeof value === 'string') {
+    if (sensitive && value) secrets.add(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) gatherSecrets(item, secrets, sensitive);
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  for (const [key, item] of Object.entries(value))
+    gatherSecrets(item, secrets, sensitive || SECRET_FIELD.test(key));
+}
+
+function redactedView(value: unknown, secrets: readonly string[]): unknown {
+  if (typeof value === 'string')
+    return secrets.reduce((text, secret) => text.replaceAll(secret, '[REDACTED]'), value);
+  if (Array.isArray(value)) return value.map((item) => redactedView(item, secrets));
+  if (!value || typeof value !== 'object') return value;
+  const safe: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    Object.defineProperty(safe, key, {
+      value: SECRET_FIELD.test(key) ? '[REDACTED]' : redactedView(item, secrets),
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return safe;
+}
+
+function protectResponse(value: unknown, secrets: readonly string[]): void {
+  if (!value || typeof value !== 'object') return;
+  Object.defineProperty(value, 'toJSON', {
+    value: () => redactedView(value, secrets),
+    configurable: true,
+  });
+  Object.defineProperty(value, INSPECT, {
+    value: () => redactedView(value, secrets),
+    configurable: true,
+  });
+  for (const child of Object.values(value)) protectResponse(child, secrets);
+}
+
 async function readLimited(response: Response, maxBytes: number): Promise<string> {
   const length = response.headers.get('content-length');
   if (length && Number(length) > maxBytes) {
@@ -265,6 +318,9 @@ export class Transport {
     burst: number;
     tokens: number;
     lastRefill: number;
+    clock: RateLimitClock;
+    tail: Promise<void>;
+    queued: number;
   };
 
   constructor(options: ClientOptions) {
@@ -299,14 +355,20 @@ export class Transport {
     // "Illegal invocation" when window.fetch runs with a foreign `this`.
     this.fetcher = (input, init) => fetcher(input, init);
     this.auth = auth;
+    Object.defineProperty(this, 'auth', { enumerable: false });
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.maxRetries = options.maxRetries ?? 2;
     this.hooks = options.hooks;
     if (options.rateLimit) {
-      const { requestsPerSecond, burst = 1 } = options.rateLimit;
+      const {
+        requestsPerSecond,
+        burst = 1,
+        clock = { now: Date.now, sleep: wait },
+      } = options.rateLimit;
       if (
         !Number.isFinite(requestsPerSecond) ||
         requestsPerSecond <= 0 ||
+        !Number.isFinite(1000 / requestsPerSecond) ||
         !Number.isSafeInteger(burst) ||
         burst < 1
       )
@@ -315,7 +377,10 @@ export class Transport {
         intervalMs: 1000 / requestsPerSecond,
         burst,
         tokens: burst,
-        lastRefill: Date.now(),
+        lastRefill: clock.now(),
+        clock,
+        tail: Promise.resolve(),
+        queued: 0,
       };
     }
     if (
@@ -331,6 +396,58 @@ export class Transport {
 
   get apiKey(): string | undefined {
     return 'apiKey' in this.auth ? this.auth.apiKey : undefined;
+  }
+
+  private acquireRateToken(signal: AbortSignal): Promise<void> | undefined {
+    const state = this.rateLimit;
+    if (!state) return;
+    const refill = () => {
+      const now = state.clock.now();
+      state.tokens = Math.min(
+        state.burst,
+        state.tokens + Math.max(0, now - state.lastRefill) / state.intervalMs,
+      );
+      state.lastRefill = now;
+    };
+    if (state.queued === 0) {
+      refill();
+      if (state.tokens >= 1) {
+        state.tokens -= 1;
+        return;
+      }
+    }
+    const previous = state.tail;
+    let release!: () => void;
+    state.tail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    state.queued++;
+    return (async () => {
+      try {
+        await withAbort(previous, signal);
+        while (true) {
+          refill();
+          if (state.tokens >= 1) {
+            state.tokens -= 1;
+            return;
+          }
+          await state.clock.sleep(Math.ceil((1 - state.tokens) * state.intervalMs), signal);
+        }
+      } finally {
+        // An aborted queued request cannot let a later request pass the
+        // active holder. Its turn is released only after the prior turn.
+        void previous.then(
+          () => {
+            state.queued--;
+            release();
+          },
+          () => {
+            state.queued--;
+            release();
+          },
+        );
+      }
+    })();
   }
 
   /** Send one request through the shared pipeline (auth, retries, timeout, decoding). */
@@ -365,6 +482,18 @@ export class Transport {
       assertSafeNumbers(spec.body);
       body = JSON.stringify(spec.body);
     }
+    const secretValues = new Set<string>();
+    gatherSecrets(spec.body, secretValues);
+    gatherSecrets(spec.query, secretValues);
+    if (spec.serializedBody) {
+      try {
+        gatherSecrets(JSON.parse(spec.serializedBody), secretValues);
+      } catch {
+        // Exact signed bytes are opaque to the transport.
+      }
+    }
+    for (const [key, value] of spec.formData ?? [])
+      if (typeof value === 'string') gatherSecrets(value, secretValues, SECRET_FIELD.test(key));
     const timeout = options.timeoutMs ?? this.timeoutMs;
     if (!Number.isFinite(timeout) || timeout <= 0)
       throw new CommerceValidationError('Invalid timeout');
@@ -385,7 +514,9 @@ export class Transport {
       path: hookPath,
       attempt,
       durationMs: Math.max(0, Date.now() - started),
-      ...(options.requestId && options.requestId !== credential
+      ...(options.requestId &&
+      options.requestId !== credential &&
+      !secretValues.has(options.requestId)
         ? { requestId: options.requestId }
         : {}),
     });
@@ -415,6 +546,8 @@ export class Transport {
           headers.set('Authorization', `Bearer ${token}`);
         }
       }
+      if (credential) secretValues.add(credential);
+      const secrets = [...secretValues];
       for (const [key, value] of Object.entries(spec.headers ?? {})) {
         if (/^(authorization|x-api-key|host|content-type|user-agent)$/i.test(key))
           throw new CommerceValidationError('Protected header override');
@@ -423,22 +556,8 @@ export class Transport {
       for (let attempt = 0; ; attempt++) {
         const started = Date.now();
         if (controller.signal.aborted) throw controller.signal.reason;
-        if (this.rateLimit) {
-          const state = this.rateLimit;
-          while (true) {
-            const now = Date.now();
-            state.tokens = Math.min(
-              state.burst,
-              state.tokens + Math.max(0, now - state.lastRefill) / state.intervalMs,
-            );
-            state.lastRefill = now;
-            if (state.tokens >= 1) {
-              state.tokens -= 1;
-              break;
-            }
-            await wait(Math.ceil((1 - state.tokens) * state.intervalMs), controller.signal);
-          }
-        }
+        const rateWait = this.acquireRateToken(controller.signal);
+        if (rateWait) await rateWait;
         let response: Response;
         try {
           emitHook(this.hooks?.onRequest, hookBase(attempt + 1, started, credential));
@@ -464,14 +583,17 @@ export class Transport {
           // Keep the fetch error for diagnosis (DNS, refused connection, TLS)
           // unless it could echo the credential, as a custom fetch might.
           throw new CommerceNetworkError('Network request failed', {
-            cause: mentions(cause, credential) ? new Error('Fetch failed') : cause,
+            cause: secrets.some((secret) => mentions(cause, secret))
+              ? new Error('Fetch failed')
+              : cause,
           });
         }
         emitHook(this.hooks?.onResponse, {
           ...hookBase(attempt + 1, started, credential),
           status: response.status,
           ...(response.headers.get('x-request-id') &&
-          response.headers.get('x-request-id') !== credential
+          response.headers.get('x-request-id') !== credential &&
+          !secretValues.has(response.headers.get('x-request-id')!)
             ? { requestId: response.headers.get('x-request-id')! }
             : {}),
         });
@@ -513,14 +635,15 @@ export class Transport {
               : undefined;
           throw new CommerceApiError(
             response.status,
-            typeof api?.code === 'string' ? api.code : `http_${response.status}`,
-            typeof api?.message === 'string' && credential
-              ? api.message.replaceAll(credential, '[REDACTED]')
-              : typeof api?.message === 'string'
-                ? api.message
-                : `HTTP ${response.status}`,
-            response.headers.get('x-request-id') ?? undefined,
-            api?.details,
+            typeof api?.code === 'string'
+              ? (redactedView(api.code, secrets) as string)
+              : `http_${response.status}`,
+            typeof api?.message === 'string'
+              ? (redactedView(api.message, secrets) as string)
+              : `HTTP ${response.status}`,
+            (redactedView(response.headers.get('x-request-id'), secrets) as string | null) ??
+              undefined,
+            redactedView(api?.details, secrets),
           );
         }
         if (spec.kind === 'none') {
@@ -546,6 +669,7 @@ export class Transport {
             cause: new Error('JSON decode failed'),
           });
         }
+        protectResponse(parsed, secrets);
         if (spec.kind === 'data' || spec.kind === 'list') {
           if (!parsed || typeof parsed !== 'object' || !('data' in parsed))
             throw new CommerceProtocolError('Missing data envelope');
