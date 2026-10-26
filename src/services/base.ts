@@ -53,7 +53,7 @@ export class CollectionService<R, List extends PageParams = PageParams, Detail =
     let offset = params?.offset ?? 0;
     if (!Number.isSafeInteger(offset) || offset < 0)
       throw new RangeError('offset must be non-negative');
-    while (true) {
+    for (;;) {
       const page = await this.list({ ...params, limit, offset } as List, options);
       if (page.data.length === 0) {
         if (offset < page.total)
@@ -70,7 +70,10 @@ export class CollectionService<R, List extends PageParams = PageParams, Detail =
 /** Standard CRUD behavior; only use for routes that implement all five operations. */
 export class ResourceService<
   R,
+  // Public CRUD input parameters bind service methods to generated wire types.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   Create,
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   Update,
   List extends PageParams = PageParams,
   CreateResult = R,

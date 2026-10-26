@@ -41,9 +41,11 @@ export class UsageReporter {
     const timestamp = new Date().toISOString();
     const hash = hex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)));
     const canonical = `${timestamp}\nPOST\n/api/v1/usage/reports\n${hash}`;
+    const apiKey = this.http.apiKey;
+    if (!apiKey) throw new CommerceValidationError('Usage reports require API-key authentication');
     const key = await crypto.subtle.importKey(
       'raw',
-      new TextEncoder().encode(this.http.apiKey!),
+      new TextEncoder().encode(apiKey),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign'],

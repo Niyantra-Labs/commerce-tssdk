@@ -54,19 +54,13 @@ function emitHook<T>(
 }
 
 function sdkRuntime(): 'node' | 'bun' | 'deno' | 'workerd' | undefined {
-  const globals = globalThis as typeof globalThis & {
-    window?: unknown;
-    document?: unknown;
-    Bun?: unknown;
-    Deno?: unknown;
-    WebSocketPair?: unknown;
-    process?: { versions?: { node?: string } };
-  };
-  if (globals.window && globals.document) return undefined;
-  if (globals.Bun) return 'bun';
-  if (globals.Deno) return 'deno';
-  if (globals.WebSocketPair) return 'workerd';
-  if (globals.process?.versions?.node) return 'node';
+  const globals = globalThis as unknown as Record<string, unknown>;
+  if (globals.window !== undefined && globals.document !== undefined) return undefined;
+  if (globals.Bun !== undefined) return 'bun';
+  if (globals.Deno !== undefined) return 'deno';
+  if (globals.WebSocketPair !== undefined) return 'workerd';
+  const processValue = globals.process as { versions?: { node?: string } } | undefined;
+  if (processValue?.versions?.node) return 'node';
   return undefined;
 }
 
@@ -156,7 +150,7 @@ export function pathSegment(value: string): string {
   return encodeURIComponent(value);
 }
 
-function assertSafeNumbers(value: unknown, seen = new WeakSet<object>()): void {
+function assertSafeNumbers(value: unknown, seen = new WeakSet()): void {
   if (
     typeof value === 'number' &&
     (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)))
@@ -181,25 +175,36 @@ function parseRetryAfter(value: string | null): number | undefined {
   return Number.isNaN(date) ? undefined : Math.max(0, Math.min(date - Date.now(), 30000));
 }
 
+function signalError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new CommerceAbortError('Request cancelled');
+}
+
 function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (signal.aborted) return reject(signal.reason);
+    if (signal.aborted) {
+      reject(signalError(signal));
+      return;
+    }
     const timer = setTimeout(() => {
       signal.removeEventListener('abort', onAbort);
       resolve();
     }, ms);
     function onAbort() {
       clearTimeout(timer);
-      reject(signal.reason);
+      reject(signalError(signal));
     }
     signal.addEventListener('abort', onAbort, { once: true });
   });
 }
 
 function withAbort<T>(value: Promise<T>, signal: AbortSignal): Promise<T> {
-  if (signal.aborted) return Promise.reject(signal.reason);
+  if (signal.aborted) return Promise.reject(signalError(signal));
   return new Promise((resolve, reject) => {
-    const onAbort = () => reject(signal.reason);
+    const onAbort = () => {
+      reject(signalError(signal));
+    };
     signal.addEventListener('abort', onAbort, { once: true });
     value.then(
       (result) => {
@@ -208,7 +213,9 @@ function withAbort<T>(value: Promise<T>, signal: AbortSignal): Promise<T> {
       },
       (cause: unknown) => {
         signal.removeEventListener('abort', onAbort);
-        reject(cause);
+        reject(
+          cause instanceof Error ? cause : new CommerceValidationError('Async operation failed'),
+        );
       },
     );
   });
@@ -218,7 +225,8 @@ function withAbort<T>(value: Promise<T>, signal: AbortSignal): Promise<T> {
 function mentions(error: unknown, secret: string | undefined): boolean {
   if (!secret) return false;
   for (let e: unknown = error, depth = 0; e != null && depth < 5; depth++) {
-    const text = e instanceof Error ? `${e.message}\n${e.stack ?? ''}` : String(e);
+    const text =
+      e instanceof Error ? `${e.message}\n${e.stack ?? ''}` : typeof e === 'string' ? e : '';
     if (text.includes(secret)) return true;
     e = e instanceof Error ? e.cause : undefined;
   }
@@ -283,7 +291,7 @@ async function readLimited(response: Response, maxBytes: number): Promise<string
   const chunks: Uint8Array[] = [];
   let size = 0;
   try {
-    while (true) {
+    for (;;) {
       const result = await reader.read();
       if (result.done) break;
       size += result.value.byteLength;
@@ -324,7 +332,8 @@ export class Transport {
   };
 
   constructor(options: ClientOptions) {
-    if (!options || !options.auth) throw new CommerceValidationError('Authentication is required');
+    if (!(options as ClientOptions | null | undefined)?.auth)
+      throw new CommerceValidationError('Authentication is required');
     const auth = options.auth;
     if (
       'apiKey' in auth === 'bearerToken' in auth ||
@@ -349,7 +358,7 @@ export class Transport {
     if (/\/api\/v1\/?$/.test(base.pathname))
       throw new CommerceValidationError('Base URL must exclude /api/v1');
     this.base = base;
-    const fetcher = options.fetch ?? globalThis.fetch;
+    const fetcher = options.fetch ?? (globalThis as { fetch?: typeof fetch }).fetch;
     if (!fetcher) throw new CommerceValidationError('fetch is unavailable');
     // Never call fetch as a method of another object: browsers throw
     // "Illegal invocation" when window.fetch runs with a foreign `this`.
@@ -425,7 +434,7 @@ export class Transport {
     return (async () => {
       try {
         await withAbort(previous, signal);
-        while (true) {
+        for (;;) {
           refill();
           if (state.tokens >= 1) {
             state.tokens -= 1;
@@ -463,7 +472,7 @@ export class Transport {
     }
     const url = new URL(this.base.origin + path);
     for (const [key, value] of Object.entries(spec.query ?? {})) {
-      if (value === null)
+      if ((value as unknown) === null)
         throw new CommerceValidationError(`Query parameter ${key} cannot be null`);
       if (
         typeof value === 'number' &&
@@ -498,13 +507,14 @@ export class Transport {
     if (!Number.isFinite(timeout) || timeout <= 0)
       throw new CommerceValidationError('Invalid timeout');
     const controller = new AbortController();
-    const onAbort = () => controller.abort(new CommerceAbortError('Request cancelled'));
+    const onAbort = () => {
+      controller.abort(new CommerceAbortError('Request cancelled'));
+    };
     options.signal?.addEventListener('abort', onAbort, { once: true });
     if (options.signal?.aborted) onAbort();
-    const timer = setTimeout(
-      () => controller.abort(new CommerceTimeoutError('Request timed out')),
-      timeout,
-    );
+    const timer = setTimeout(() => {
+      controller.abort(new CommerceTimeoutError('Request timed out'));
+    }, timeout);
     const retryable = !spec.formData && spec.method === 'GET' && spec.retryable !== false;
     // Only the collection segment is exposed; later segments may be IDs,
     // license keys, or download tokens. Never expose query values.
@@ -533,9 +543,10 @@ export class Transport {
       if (!spec.unauthenticated) {
         if ('apiKey' in this.auth) {
           credential = this.auth.apiKey;
-          headers.set('X-API-Key', credential!);
+          if (!credential) throw new CommerceValidationError('API key is empty');
+          headers.set('X-API-Key', credential);
         } else {
-          if (controller.signal.aborted) throw controller.signal.reason;
+          controller.signal.throwIfAborted();
           const bearer = this.auth.bearerToken;
           const token =
             typeof bearer === 'function'
@@ -569,7 +580,7 @@ export class Transport {
             redirect: 'manual',
           });
         } catch (cause) {
-          if (controller.signal.aborted) throw controller.signal.reason;
+          controller.signal.throwIfAborted();
           if (retryable && attempt < this.maxRetries) {
             const delay = Math.random() * Math.min(500 * 2 ** attempt, 5000);
             emitHook(this.hooks?.onRetry, {
@@ -588,13 +599,12 @@ export class Transport {
               : cause,
           });
         }
+        const responseId = response.headers.get('x-request-id');
         emitHook(this.hooks?.onResponse, {
           ...hookBase(attempt + 1, started, credential),
           status: response.status,
-          ...(response.headers.get('x-request-id') &&
-          response.headers.get('x-request-id') !== credential &&
-          !secretValues.has(response.headers.get('x-request-id')!)
-            ? { requestId: response.headers.get('x-request-id')! }
+          ...(responseId && responseId !== credential && !secretValues.has(responseId)
+            ? { requestId: responseId }
             : {}),
         });
         if (
@@ -608,7 +618,7 @@ export class Transport {
           discardBody(response);
           emitHook(this.hooks?.onRetry, {
             ...hookBase(attempt + 1, started, credential),
-            reason: `http_${response.status}`,
+            reason: `http_${String(response.status)}`,
             delayMs: delay,
           });
           await wait(delay, controller.signal);
@@ -637,10 +647,10 @@ export class Transport {
             response.status,
             typeof api?.code === 'string'
               ? (redactedView(api.code, secrets) as string)
-              : `http_${response.status}`,
+              : `http_${String(response.status)}`,
             typeof api?.message === 'string'
               ? (redactedView(api.message, secrets) as string)
-              : `HTTP ${response.status}`,
+              : `HTTP ${String(response.status)}`,
             (redactedView(response.headers.get('x-request-id'), secrets) as string | null) ??
               undefined,
             redactedView(api?.details, secrets),

@@ -43,7 +43,7 @@
     "test:integration": "npm run build && node integration/live-smoke.mjs",
     "fmt": "prettier --write src test examples integration README.md doc package.json",
     "fmt:check": "prettier --check src test examples integration README.md doc package.json",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "docs": "typedoc --out .typedoc src/index.ts",
     "audit": "npm audit --omit=dev",
     "contract:manifest": "python3 -I scripts/route-manifest.py ${COMMERCE_REPO:-../commerce} > test/fixtures/routes.json",
