@@ -16,6 +16,7 @@ Models for most domains are generated from the server's Go structs (pointer fiel
 | Docs           | `npm test` (`test/docs.test.ts`)                                             | Contract cases + manifest                                   | README endpoint table out of date; regenerate with `UPDATE_DOCS=1 npx vitest run test/docs.test.ts`                                      |
 | Live smoke     | `npm run test:integration`                                                   | A running Commerce server                                   | Real behavior: lifecycles, signatures, webhook delivery, downloads, tenant isolation                                                     |
 | Runtimes       | `npm run test:runtimes`                                                      | A running Commerce server                                   | Runtime differences in fetch, Web Crypto (Ed25519, HMAC), streams, and CORS                                                              |
+| Package        | `npm run test:package`                                                       | The packed tarball                                          | Wrong `exports`/`types`, files missing from or leaking into the tarball, ESM/CJS resolution, consumer typechecking                       |
 
 Adding a service method means adding a contract case in `test/contract-cases.ts` (the coverage meta-test fails otherwise), regenerating the README table, and — for anything beyond a plain CRUD shape — a live smoke assertion. Do not mark an endpoint complete from mocked responses alone.
 
@@ -61,4 +62,4 @@ The tenant guard (`commerce/internal/tenant`) authenticates every `/api/v1` rout
 
 ## Release work
 
-Before reporting work done: `npm run build`, `npm run typecheck` (source, tests, and examples), `npm test`, `npm run lint`, `npm run fmt:check`, `npm run docs` (HTML under `.typedoc/`, outside the package), `npm run contract:check`, `npm run test:integration`, `npm run test:runtimes`, and `npm pack --dry-run --json` (the tarball must contain only `dist/`, `LICENSE`, `README.md`, and `package.json`). Do not publish until the P0 items in [the plan](../spec/todo.md) are closed.
+Before reporting work done: `npm run build`, `npm run typecheck` (source, tests, and examples), `npm test`, `npm run lint`, `npm run fmt:check`, `npm run docs` (HTML under `.typedoc/`, outside the package), `npm run contract:check`, `npm run test:integration`, `npm run test:runtimes`, `npm run test:package`, and `npm pack --dry-run --json` (the tarball must contain only `dist/`, `LICENSE`, `README.md`, and `package.json`). Do not publish until the P0 items in [the plan](../spec/todo.md) are closed.

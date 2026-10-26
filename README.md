@@ -82,7 +82,7 @@ The built package uses only `fetch`, `AbortController`, and Web Crypto — no No
 | Cloudflare Workers | workerd 1.20260730 (Miniflare) |                                                |
 | Browsers           | Chrome 155                     | cross-origin; see below                        |
 
-In browsers, use a short-lived bearer token, never an API key. Usage reporting cannot run in a browser because the server's CORS policy does not allow the `X-Usage-*` signature headers, and the server does not expose `X-Request-ID` to browser JavaScript. The package is ESM-only; Firefox, Safari, and Vercel Edge have not been tested yet.
+In browsers, use a short-lived bearer token, never an API key. Usage reporting cannot run in a browser because the server's CORS policy does not allow the `X-Usage-*` signature headers, and the server does not expose `X-Request-ID` to browser JavaScript. The package is ESM-only; CommonJS code can `require()` it on Node 20.19+ or 22.12+ (Node's require(esm)). Firefox, Safari, and Vercel Edge have not been tested yet.
 
 ## Testing
 
@@ -92,6 +92,7 @@ In browsers, use a short-lived bearer token, never an API key. Usage reporting c
 | `npm run contract:check`   | The route manifest still matches the Commerce source (`COMMERCE_REPO`, default `../commerce`)                                                                    |
 | `npm run test:integration` | The SDK against a live Commerce server, including cross-tenant isolation                                                                                         |
 | `npm run test:runtimes`    | The runtime matrix above against the live server                                                                                                                 |
+| `npm run test:package`     | The packed tarball installed into a fresh project: contents, ESM import, CommonJS `require`, and strict TypeScript consumers (`nodenext` and `bundler`)          |
 
 Start the live server with `docker compose -f integration/compose.yml up -d --build` from this repository (it builds the adjacent `commerce` checkout and binds only `127.0.0.1:19094`); stop it with `docker compose -f integration/compose.yml down`. The [developer guide](doc/developer-guide.md) covers the test layers and the request pipeline.
 
