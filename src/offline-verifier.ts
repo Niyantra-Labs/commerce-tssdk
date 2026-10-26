@@ -38,6 +38,13 @@ async function importEd25519PublicKey(publicKeyBase64: string): Promise<CryptoKe
  * signs the certificate's own bytes (fixed alongside this verifier); older
  * servers sign an unrelated payload and certificates they issue will fail
  * signature verification here by design.
+ *
+ * @example
+ * ```ts
+ * const verifier = new OfflineVerifier(signingKey.public_key);
+ * const result = await verifier.verify(certificate, signature, machineFingerprint);
+ * if (!result.valid) throw new Error(result.errorCode);
+ * ```
  */
 export class OfflineVerifier {
   private readonly publicKeyPromise: Promise<CryptoKey>;

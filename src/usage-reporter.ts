@@ -7,7 +7,21 @@ function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Sends usage batches signed with the current Commerce server protocol. */
+/**
+ * Sends usage batches signed with the current Commerce server protocol.
+ *
+ * @example
+ * ```ts
+ * await client.usageReporter.reportSingle({
+ *   license_key: licenseKey,
+ *   feature_key: 'api_calls',
+ *   quantity: 1,
+ *   period_start: start.toISOString(),
+ *   period_end: end.toISOString(),
+ *   idempotency_key: eventId,
+ * });
+ * ```
+ */
 export class UsageReporter {
   constructor(private readonly http: Transport) {
     if (!http.apiKey)

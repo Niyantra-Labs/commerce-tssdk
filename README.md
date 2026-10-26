@@ -112,6 +112,8 @@ Local verification checks the signature, machine fingerprint, expiry, and grace 
 
 Cryptographic checks and their limits are detailed in [the security review](doc/security.md).
 
+For contributors, see [the setup and PR guide](CONTRIBUTING.md) and [CI gates](doc/ci.md). Maintainers can use [the release checklist](doc/release.md); the package remains private.
+
 ## Runtime support
 
 The built package uses only `fetch`, `AbortController`, and Web Crypto — no Node built-ins and no runtime dependencies. `npm run test:runtimes` runs the same checks (live API calls, server-signed Ed25519 and HMAC verification, signed usage reports, cancellation) in each runtime:

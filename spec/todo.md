@@ -258,20 +258,20 @@ Each service is a class (or object literal with methods) that shares a reference
 
 ### 3.3 Developer Experience
 
-- [ ] TSDoc examples for all major types and methods
+- [~] TSDoc examples for all major types and methods — examples added to Client, UsageReporter, WebhookVerifier, OfflineVerifier, defineWebhookHandler, OfflineCertificateCache, and the license-key helper; individual service methods still need examples
 - [x] Typed webhook event handling — `TypedWebhookEvent` / `isKnownWebhookEvent` narrow confirmed event payloads and preserve unknown future types (`src/webhook-events.ts`, `test/webhook-events.test.ts`, live smoke)
-- [ ] `defineWebhookHandler({ secret, handlers })` factory returning a framework-agnostic request handler
+- [x] `defineWebhookHandler({ secret | secrets, handlers, dedupe? })` factory returning a framework-agnostic `Request` → `Response` handler — unit tests and a real signed `license.issued` delivery in the live smoke; `WebhookDedupe` requires an atomic durable claim
 - [ ] Batch operation helpers (parallel license creation via `Promise.allSettled` with a concurrency limit)
 - [ ] CLI tool (`npx @niyantra/commerce-cli`) for SDK exploration / quick REPL-style calls
-- [ ] `CONTRIBUTING.md` with setup, build, and PR guidelines
-- [ ] Type-level tests using `expect-type` or `tsd` to lock in the public API shape
+- [x] `CONTRIBUTING.md` with setup, build, and PR guidelines — local gate, server fixture workflow, and live proof rules
+- [x] Type-level tests using `expect-type` or `tsd` to lock in the public API shape — exact-pinned `expect-type` assertions in `test/type-surface.test.ts` compile under `npm run typecheck`
 
 ### 3.4 Additional Helpers
 
 - [ ] Machine fingerprint generation utility (cross-runtime — hashes stable machine inputs, documents what differs per platform)
-- [ ] License key format validator
-- [ ] Offline certificate caching helper (pluggable storage: in-memory, `localStorage`, `fs`)
-- [ ] Webhook event router (type-safe dispatch table)
+- [x] License key format validator — `isGeneratedLicenseKeyFormat` matches `commerce/internal/domain/license/repository.go:generateLicenseKey` and a freshly issued key in the live smoke; it does not assert server validity
+- [~] Offline certificate caching helper (pluggable storage: in-memory, `localStorage`, `fs`) — `OfflineCertificateCache` accepts any async storage adapter and includes volatile memory storage; localStorage/fs adapters remain application-owned because of platform and secret-storage policy; re-verification passed against a real certificate
+- [x] Webhook event router (type-safe dispatch table) — `defineWebhookHandler` dispatches known typed event handlers and an optional unknown-event fallback
 - [ ] Subscription proration calculator (client-side preview mirroring server math)
 
 ---
@@ -282,10 +282,10 @@ Each service is a class (or object literal with methods) that shares a reference
 
 - [x] GitHub Actions workflow: install, typecheck, lint, test, build on the published supported Node versions — .github/workflows/ci.yml: Node 20/22/24 gate (build, typecheck, lint, fmt, test, docs, package smoke, audit, tarball contents); actions pinned to verified SHAs; **not yet run on GitHub**
 - [x] Bun + Deno jobs for runtime compatibility — in the opt-in live job (`RUN_LIVE_CONTRACT`, `COMMERCE_REPO_TOKEN`), not yet run
-- [ ] Test coverage reporting via `@vitest/coverage-v8` → codecov — V8 coverage and aggregate thresholds run on the Node 24 CI leg (92% statements, 87% branches at merge); Codecov upload remains open.
+- [~] Test coverage reporting via `@vitest/coverage-v8` → codecov — V8 coverage and aggregate thresholds run on every SDK CI matrix leg; Codecov upload remains disabled pending a configured token, with setup documented in `doc/ci.md`.
 - [x] `npm audit --production` on every PR — `npm audit --omit=dev` in CI
-- [ ] `socket.dev` or `snyk` dependency vulnerability scanning
-- [ ] Cross-platform matrix: ubuntu, macos, windows
+- [x] Dependency vulnerability scanning without a paid service — separate CI job runs npm audit at zero tolerance for runtime dependencies and high-severity threshold for development dependencies; two moderate Vitest dev advisories were reported locally, and no runtime vulnerabilities
+- [~] Cross-platform matrix: ubuntu, macos, windows — configured Node 20/22/24 on Ubuntu and Node 24 on macOS/Windows; `actionlint` 1.7.7 passed, but no GitHub runner execution has occurred
 
 ### 4.2 Release Management
 
@@ -301,13 +301,13 @@ Each service is a class (or object literal with methods) that shares a reference
 ### 4.3 Quality Gates
 
 - [x] Minimum 80% test coverage — `npm run coverage` measured 92.1% statements, 86.74% branches, 98.39% functions, 93.88% lines; configured aggregate thresholds are 90/84/96/91
-- [ ] Zero ESLint warnings with `--max-warnings 0`
+- [x] Zero ESLint warnings with `--max-warnings 0` — `npm run lint` passed with `typescript-eslint` strict type-checked rules on production `src` and recommended rules on tests/tooling
 - [x] `tsc --noEmit` clean on the root tsconfig — `npm run typecheck` passed (root and test tsconfigs)
 - [x] `publint` clean to catch common packaging mistakes — `publint` 0.3.25 reported “All good!” on the built package
 - [~] `@arethetypeswrong/cli` clean (ESM + CJS + types dual-module resolution) — supported ESM paths green; expected Node 16 CommonJS warning remains and makes the tool exit nonzero
-- [ ] Bundle-size budget tracked via `size-limit` (initial: < 25 KB gzipped for `@niyantra/commerce`)
-- [ ] API extractor / API report diffing between releases (breaking change detection)
-- [ ] Security audit of crypto operations (review HMAC, Ed25519, constant-time compare paths)
+- [x] Bundle-size budget tracked with an equivalent zero-runtime-dependency esbuild check (initial: < 25 KB gzipped for `@niyantra/commerce`) — `npm run test:bundle` measured 9,687 gzip bytes for the full SDK and fails above 25 KiB
+- [x] API extractor / API report diffing between releases (breaking change detection) — `npm run test:api` checks declarations against `etc/commerce.api.md`; CI requires review of every public diff before acceptance
+- [x] Security audit of crypto operations (review HMAC, Ed25519, constant-time compare paths) — `doc/security.md` compares SDK and Go source, records live proofs and limits; invalid clocks and parser-cause secret leaks fixed in verifier tests
 
 ---
 
@@ -322,7 +322,7 @@ Each service is a class (or object literal with methods) that shares a reference
 
 ### 5.2 Performance
 
-- [ ] Tree-shaking verification — importing a single service should not pull every other service into the bundle
+- [x] Tree-shaking verification — esbuild `PlanService`-only import is 678 gzip bytes and contains no payment, gateway, or webhook endpoint route literal (`npm run test:bundle`)
 - [ ] Concurrent request throughput benchmarks
 - [ ] Bundle size profiling for the specialized feature surface
 - [ ] Large batch operation optimisation

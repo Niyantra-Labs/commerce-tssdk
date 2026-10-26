@@ -34,7 +34,18 @@ import {
   WebhookEventService,
 } from './services/index.js';
 
-/** Main entry point for the Niyantra Commerce API. */
+/**
+ * Main entry point for the Niyantra Commerce API.
+ *
+ * @example
+ * ```ts
+ * const client = new Client({
+ *   baseUrl: 'https://commerce.example.com',
+ *   auth: { apiKey },
+ * });
+ * const page = await client.licenses.list({ limit: 10 });
+ * ```
+ */
 export class Client {
   private readonly http: Transport;
   constructor(options: ClientOptions) {

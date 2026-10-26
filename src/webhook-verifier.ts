@@ -21,7 +21,15 @@ function equal(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-/** Verifies current `v1` Niyantra webhook deliveries before JSON parsing. */
+/**
+ * Verifies current `v1` Niyantra webhook deliveries before JSON parsing.
+ *
+ * @example
+ * ```ts
+ * const verifier = new WebhookVerifier([currentSecret, previousSecret]);
+ * const event = await verifier.verify(request.headers, new Uint8Array(await request.arrayBuffer()));
+ * ```
+ */
 export class WebhookVerifier {
   private readonly secrets: readonly string[];
 
