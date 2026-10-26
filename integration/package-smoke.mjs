@@ -17,20 +17,28 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const work = mkdtempSync(join(tmpdir(), 'sdk-package-'));
 const run = (command, args, cwd = work) =>
   execFileSync(command, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+const runNpm = (args, cwd = work) => {
+  const cli = process.env.npm_execpath;
+  if (cli) return run(process.execPath, [cli, ...args], cwd);
+  return run(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, cwd);
+};
 
 try {
-  run('npm', ['pack', '--pack-destination', work], root);
-  const tarball = readdirSync(work).find((name) => name.endsWith('.tgz'));
-  assert.ok(tarball, 'npm pack produced no tarball');
-  const listing = run('tar', ['-tzf', tarball]).trim().split('\n');
-  const unexpected = listing.filter(
-    (path) => !/^package\/(dist\/.+|LICENSE|README\.md|package\.json)$/.test(path),
+  const report = JSON.parse(runNpm(['pack', '--dry-run', '--json'], root));
+  const pack = Array.isArray(report) ? report[0] : Object.values(report)[0];
+  const files = pack?.files?.map((file) => file.path);
+  assert.ok(files, 'npm pack produced no file list');
+  const unexpected = files.filter(
+    (path) => !path.startsWith('dist/') && !['LICENSE', 'README.md', 'package.json'].includes(path),
   );
   assert.deepEqual(unexpected, [], 'tarball contains files outside dist/, LICENSE, README.md');
-  console.log(`PASS tarball contents (${listing.length} files)`);
+  runNpm(['pack', '--pack-destination', work], root);
+  const tarball = readdirSync(work).find((name) => name.endsWith('.tgz'));
+  assert.ok(tarball, 'npm pack produced no tarball');
+  console.log(`PASS tarball contents (${files.length} files)`);
 
   writeFileSync(join(work, 'package.json'), JSON.stringify({ name: 'consumer', private: true }));
-  run('npm', ['install', '--no-audit', '--no-fund', `./${tarball}`]);
+  runNpm(['install', '--no-audit', '--no-fund', `./${tarball}`]);
   const typescript = join(root, 'node_modules/typescript/lib/tsc.js');
 
   writeFileSync(

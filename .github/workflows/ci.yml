@@ -10,11 +10,21 @@ permissions:
 
 jobs:
   sdk:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        node: ['20', '22', '24']
+        include:
+          - os: ubuntu-latest
+            node: '20'
+          - os: ubuntu-latest
+            node: '22'
+          - os: ubuntu-latest
+            node: '24'
+          - os: macos-latest
+            node: '24'
+          - os: windows-latest
+            node: '24'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -27,23 +37,26 @@ jobs:
       - run: npm run lint
       - run: npm run fmt:check
       - run: npm test
-      - if: matrix.node == '24'
-        run: npm run coverage
+      - run: npm run coverage
       - run: npm run docs
+      - run: npm run test:bundle
+      - run: npm run test:api
       - run: npm run test:package
-      - run: npm audit --omit=dev
-      - name: Verify package contents
-        run: |
-          npm pack --dry-run --json > /tmp/commerce-pack.json
-          node --input-type=module -e '
-            import { readFileSync } from "node:fs";
-            const report = JSON.parse(readFileSync("/tmp/commerce-pack.json", "utf8"));
-            const pack = Array.isArray(report) ? report[0] : Object.values(report)[0];
-            if (!pack || !Array.isArray(pack.files)) throw new Error("Missing npm pack file list");
-            const unexpected = pack.files.map(file => file.path).filter(path =>
-              !path.startsWith("dist/") && !["LICENSE", "README.md", "package.json"].includes(path));
-            if (unexpected.length) throw new Error(`Unexpected package files: ${unexpected.join(", ")}`);
-          '
+      - run: npm pack --dry-run --json
+
+  dependency-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Require zero runtime dependency vulnerabilities
+        run: npm audit --omit=dev --audit-level=low
+      - name: Reject high severity development dependency vulnerabilities
+        run: npm audit --audit-level=high
 
   live:
     if: github.event_name == 'workflow_dispatch' && vars.RUN_LIVE_CONTRACT == 'true'

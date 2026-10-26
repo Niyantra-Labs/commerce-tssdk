@@ -13,7 +13,7 @@ Update `package.json` and `CHANGELOG.md` together. Review generated declarations
 ## Release checklist
 
 1. Reconcile the server route manifest: `npm run contract:check` against the intended Commerce commit.
-2. Run `npm ci`, `npm run build`, `npm run typecheck`, `npm run lint`, `npm run fmt:check`, `npm test`, `npm run coverage`, and `npm run docs`.
+2. Run `npm ci`, `npm run build`, `npm run typecheck`, `npm run lint`, `npm run fmt:check`, `npm test`, `npm run coverage`, `npm run docs`, `npm run test:bundle`, and `npm run test:api`. Review intentional changes to `etc/commerce.api.md` before accepting the API report.
 3. Run the live server and execute `npm run test:integration` and `npm run test:runtimes`; review reported SKIPs. Run `npm run test:package` and `npm audit --omit=dev`.
 4. Run `npm pack --dry-run --json` and confirm every path is under `dist/` or is `LICENSE`, `README.md`, or `package.json`. Confirm zero runtime dependencies.
 5. Update the Unreleased section of `CHANGELOG.md` into a dated version, add a new Unreleased section, and review the README, API declarations, and version constant in `src/utils.ts`.

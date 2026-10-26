@@ -1,0 +1,9 @@
+# CI and dependency scanning
+
+The SDK CI job runs the local static, unit, docs, package, bundle, API-report, and coverage gates on Node 20/22/24 on Ubuntu and Node 24 on macOS and Windows. `test:package` checks `npm pack --dry-run --json` and then installs the packed artifact into a fresh consumer. A separate dependency-scan job requires zero runtime vulnerabilities and rejects high or critical advisories in development dependencies. The latter currently reports two moderate Vitest development advisories (`GHSA-qxg6-89mg-rqv8` and `GHSA-xp26-3454-mjgp`); review them separately rather than calling the full dependency tree clean. The available fix requires a newer Vitest pin and its matching coverage package, subject to the repository's 14-day dependency age rule.
+
+The opt-in live job runs only on `workflow_dispatch` with repository variable `RUN_LIVE_CONTRACT=true`. It needs `COMMERCE_REPO_TOKEN` to check out the private sibling Commerce repository. It builds the Compose stack, checks the route manifest, and runs the integration and runtime smokes. Runtimes missing on the runner report SKIP; Bun and Deno are installed by pinned setup actions. The local branch cannot prove how GitHub-hosted runners behave, so inspect their first run before relying on the matrix.
+
+Codecov upload is disabled. To enable it, configure `CODECOV_TOKEN` as a repository secret and add a Node 24 Ubuntu step after `npm run coverage` using a full-SHA-pinned Codecov action with `token: ${{ secrets.CODECOV_TOKEN }}`, `files: ./coverage/lcov.info`, and `fail_ci_if_error: true`. Verify the action SHA against its tag with `git ls-remote` before committing. Keep token use limited to that step; no token is needed for local V8 coverage thresholds.
+
+The release workflow is manual and `package.json` remains private. See `doc/release.md` for the human review and dry-run process. No CI workflow should remove `private` from the repository package or publish on push/PR.

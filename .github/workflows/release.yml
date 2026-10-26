@@ -49,6 +49,8 @@ jobs:
       - run: npm test
       - run: npm run coverage
       - run: npm run docs
+      - run: npm run test:bundle
+      - run: npm run test:api
       - run: npm run contract:check
       - run: docker compose -f integration/compose.yml up -d --build
       - name: Wait for Commerce health
