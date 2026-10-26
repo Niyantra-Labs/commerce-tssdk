@@ -29,7 +29,7 @@ More examples live in `examples/`: [quick start](examples/quickstart.ts), [pagin
 - **Bearer tokens** come from your identity provider (Zitadel, Auth0, or any OIDC issuer the server trusts). A token carrying an org claim is scoped like an API key. A token without one is a platform operator and needs the server's operator role (`AUTH_OPERATOR_ROLES`, default `commerce:admin`) for cross-organization access.
 - **Public routes** — license validation, activation, offline verification, the signing key, download authorization and download, published checksums, and the application-notification feed — authenticate with the license key, signed token, or certificate in the request. They are marked in the [endpoint reference](#endpoint-reference).
 
-API-key scopes are stored by the server but currently enforced only for usage reporting (`usage:report`).
+API keys are also limited by their **scopes**: `<family>:read` for GET routes and `<family>:write` for everything else (write implies read), `usage:report` for signed usage ingestion, or `*`. Families follow the namespaces (`licenses`, `subscriptions`, `affiliates` covers commission plans, links, events and payouts, `referrals`, `releases`, `gateways`, `api_keys`, …; see `APIKeyCreateParams`). A request outside the key's scopes is `403 insufficient_scope`, and a key can only create keys with scopes it holds. Keys that existed before scopes were enforced were granted `*`.
 
 ## Errors, retries, and cancellation
 
@@ -579,6 +579,5 @@ Generated from the contract suite (203 methods). "Public" routes take the licens
 
 These are Commerce-side behaviors the SDK documents rather than works around:
 
-- Download tokens are reusable until they expire.
-- `notifications.retry` re-queues a notification in any state, including one already delivered.
+- Download tokens are deliberately reusable until they expire (`RELEASE_DOWNLOAD_URL_TTL_SECONDS`, default 15 minutes) so interrupted downloads and download managers can retry; treat download URLs as short-lived secrets.
 - The Go SDK's `orders.update`, `orders.pay`, `invoices.send`, and `webhookEndpoints.delete` target routes the server does not have and are deliberately absent; use `orders.checkout`/`fulfill` and `invoices.issue`/`void`/`pdf`.

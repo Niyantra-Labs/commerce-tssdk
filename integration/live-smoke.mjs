@@ -104,7 +104,7 @@ async function main() {
   const key = await client.apiKeys.create({
     application_id: application.id,
     name: `SDK key ${suffix}`,
-    scopes: ['usage:report'],
+    scopes: ['*'],
     environment: 'sandbox',
   });
   assert.ok(key.secret_key?.startsWith('sk_'));
@@ -315,6 +315,7 @@ async function main() {
   assert.equal(rejected.status, 'rejected');
   passed('affiliate create/reject (requires a JSON body on the server)');
 
+  await apiKeyScopes({ api: authenticated, application, license });
   await domainLifecycles({ api: authenticated, organization, product, customer });
 
   await serverExtensions({ api: authenticated, organization, product, customer, license });
@@ -343,6 +344,76 @@ async function main() {
     license,
     affiliate,
   });
+}
+
+/** API-key scopes: read vs write, usage-only keys, and no minting broader keys. */
+async function apiKeyScopes({ api, application, license }) {
+  const id = randomUUID().slice(0, 8);
+  const mint = (scopes) =>
+    api.apiKeys.create({
+      application_id: application.id,
+      name: `scoped ${id} ${scopes.join(' ')}`,
+      scopes,
+      environment: 'sandbox',
+    });
+  await assert.rejects(
+    () => mint([]),
+    (error) => error.status === 400 && error.code === 'invalid_scopes',
+  );
+  await assert.rejects(
+    () => mint(['licenses:delete']),
+    (error) => error.status === 400 && error.code === 'invalid_scopes',
+  );
+
+  const reader = new Client({
+    baseUrl,
+    auth: { apiKey: (await mint(['licenses:read'])).secret_key },
+  });
+  assert.ok((await reader.licenses.list({ limit: 1 })).data.length >= 0);
+  assert.equal((await reader.licenses.get(license.id)).id, license.id);
+  await assert.rejects(
+    () => reader.licenses.revoke(license.id, { reason: 'should not be allowed' }),
+    (error) => error.status === 403 && error.code === 'insufficient_scope',
+  );
+  await assert.rejects(
+    () => reader.products.list(),
+    (error) => error.status === 403,
+  );
+
+  const usageOnly = new Client({
+    baseUrl,
+    auth: { apiKey: (await mint(['usage:report'])).secret_key },
+  });
+  await assert.rejects(
+    () => usageOnly.products.list(),
+    (error) => error.status === 403,
+  );
+
+  // A key may mint keys only with scopes it already holds.
+  const keyAdmin = new Client({
+    baseUrl,
+    auth: { apiKey: (await mint(['api_keys:write', 'licenses:read'])).secret_key },
+  });
+  const narrower = await keyAdmin.apiKeys.create({
+    application_id: application.id,
+    name: `narrower ${id}`,
+    scopes: ['licenses:read'],
+    environment: 'sandbox',
+  });
+  assert.deepEqual(narrower.scopes, ['licenses:read']);
+  await assert.rejects(
+    () =>
+      keyAdmin.apiKeys.create({
+        application_id: application.id,
+        name: `escalation ${id}`,
+        scopes: ['*'],
+        environment: 'sandbox',
+      }),
+    (error) => error.status === 403 && error.code === 'insufficient_scope',
+  );
+  passed(
+    'API-key scopes (read vs write, usage-only, no minting broader keys, invalid scopes rejected)',
+  );
 }
 
 /**
@@ -724,6 +795,7 @@ async function serverExtensions({ api, organization, product, customer, license 
     channel: 'email',
     recipient: `notify-${id}@example.test`,
     variables: { name: 'SDK' },
+    max_attempts: 1,
   });
   assert.equal(queued.template_id, template.id);
   assert.match(queued.subject ?? '', /Welcome SDK/);
@@ -732,8 +804,34 @@ async function serverExtensions({ api, organization, product, customer, license 
   assert.ok(
     (await api.notifications.list({ channel: 'email' })).data.some((n) => n.id === queued.id),
   );
-  assert.equal((await api.notifications.retry(queued.id)).attempt_count, 0);
-  passed('notification templates and notifications (create/get/update, queue/get/list/retry)');
+  // Only failed or bounced notifications can be retried, so a retry never
+  // resends a delivered message. SMTP is unreachable here: the single attempt fails.
+  let conflicts = 0;
+  const retryOrConflict = async () => {
+    try {
+      return await api.notifications.retry(queued.id);
+    } catch (error) {
+      assert.equal(error.status, 409);
+      assert.equal(error.code, 'invalid_transition');
+      conflicts += 1;
+      return undefined;
+    }
+  };
+  await retryOrConflict(); // still queued unless the worker already failed it
+  let current = queued;
+  for (let i = 0; i < 40 && current.status !== 'failed'; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    current = (await api.notifications.get(queued.id)).notification;
+  }
+  assert.equal(current.status, 'failed', 'notification never reached failed');
+  const retried = await api.notifications.retry(queued.id);
+  assert.equal(retried.status, 'queued');
+  assert.equal(retried.attempt_count, 0);
+  await retryOrConflict(); // queued again, so normally a conflict
+  assert.ok(conflicts >= 1, 'a retry of a non-failed notification must be refused with 409');
+  passed(
+    'notification templates and notifications (create/get/update, queue/get/list, retry only after failure)',
+  );
 
   const announcement = await api.applicationNotifications.create({
     org_id: organization.id,
@@ -942,7 +1040,7 @@ async function tenantIsolation({
   const otherKey = await client.apiKeys.create({
     application_id: otherApp.id,
     name: `SDK other key ${otherSuffix}`,
-    scopes: ['usage:report'],
+    scopes: ['*'],
     environment: 'sandbox',
   });
   const other = new Client({ baseUrl, auth: { apiKey: otherKey.secret_key } });

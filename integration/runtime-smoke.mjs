@@ -75,7 +75,7 @@ async function bootstrap() {
   const key = await operator.apiKeys.create({
     application_id: app.id,
     name: `Runtime key ${runId}`,
-    scopes: ['usage:report'],
+    scopes: ['*'],
     environment: 'sandbox',
   });
   const keyed = new Client({ baseUrl, auth: { apiKey: key.secret_key } });

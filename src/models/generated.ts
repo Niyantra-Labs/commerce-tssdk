@@ -503,10 +503,19 @@ export interface APIKeyCreateResult {
   readonly secret_key: string;
 }
 
+/**
+ * API-key creation. `scopes` needs at least one of `*`, `usage:report`, or
+ * `<family>:read` / `<family>:write` (write implies read), where family is one
+ * of: organizations, products, plans, customers, licenses, activations,
+ * machines, subscriptions, entitlements, addons, usage, orders, payments,
+ * invoices, webhooks, applications, api_keys, offline_certificates, referrals,
+ * affiliates, audit_logs, gateways, releases, notifications,
+ * application_notifications. A key can only grant scopes it holds itself.
+ */
 export interface APIKeyCreateParams {
   application_id: string;
   name: string;
-  scopes?: ReadonlyArray<string>;
+  scopes: ReadonlyArray<string>;
   environment?: string;
   rate_limit_per_minute?: number | null;
   expires_at?: string | null;

@@ -1109,7 +1109,7 @@ export class NotificationService extends CollectionService<
       options,
     );
   }
-  /** Re-queue delivery. The server allows this from any status, including delivered. */
+  /** Re-queue a `failed` or `bounced` notification; any other status rejects with 409 `invalid_transition`. */
   retry(id: string, options?: RequestOptions): Promise<M.Notification> {
     return this.action(id, 'retry', undefined, options);
   }
