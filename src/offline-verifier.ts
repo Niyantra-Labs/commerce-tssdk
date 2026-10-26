@@ -1,5 +1,6 @@
 import type { OfflineCertificatePayload, OfflineLocalVerifyResult } from './models/contracts.js';
 import { CommerceCryptoError, CommerceValidationError } from './errors.js';
+import { protectSecretView } from './utils.js';
 
 function base64ToBytes(value: string): Uint8Array {
   const binary = atob(value);
@@ -64,23 +65,23 @@ export class OfflineVerifier {
     try {
       payloadBytes = base64ToBytes(certificateBase64);
     } catch {
-      return {
+      return protectSecretView({
         valid: false,
         inGracePeriod: false,
         errorCode: 'invalid_certificate',
         errorMessage: 'cannot decode certificate',
-      };
+      });
     }
     let signatureBytes: Uint8Array;
     try {
       signatureBytes = base64ToBytes(signatureBase64);
     } catch {
-      return {
+      return protectSecretView({
         valid: false,
         inGracePeriod: false,
         errorCode: 'invalid_signature',
         errorMessage: 'cannot decode signature',
-      };
+      });
     }
 
     const publicKey = await this.publicKeyPromise;
@@ -91,12 +92,12 @@ export class OfflineVerifier {
       new Uint8Array(payloadBytes),
     );
     if (!signatureValid) {
-      return {
+      return protectSecretView({
         valid: false,
         inGracePeriod: false,
         errorCode: 'invalid_signature',
         errorMessage: 'certificate signature does not match',
-      };
+      });
     }
 
     let payload: OfflineCertificatePayload;
@@ -104,20 +105,18 @@ export class OfflineVerifier {
       payload = JSON.parse(
         new TextDecoder('utf-8', { fatal: true }).decode(payloadBytes),
       ) as OfflineCertificatePayload;
-    } catch (cause) {
-      throw new CommerceCryptoError('Signed offline certificate payload is not valid JSON', {
-        cause,
-      });
+    } catch {
+      throw new CommerceCryptoError('Signed offline certificate payload is not valid JSON');
     }
 
     if (payload.fingerprint !== fingerprint) {
-      return {
+      return protectSecretView({
         valid: false,
         payload,
         inGracePeriod: false,
         errorCode: 'machine_mismatch',
         errorMessage: 'certificate not valid for this machine',
-      };
+      });
     }
 
     const expiresAt = new Date(payload.expires_at);
@@ -127,15 +126,19 @@ export class OfflineVerifier {
     }
 
     if (now.getTime() > graceExpiresAt.getTime()) {
-      return {
+      return protectSecretView({
         valid: false,
         payload,
         inGracePeriod: false,
         errorCode: 'expired',
         errorMessage: 'certificate has expired (past grace period)',
-      };
+      });
     }
 
-    return { valid: true, payload, inGracePeriod: now.getTime() > expiresAt.getTime() };
+    return protectSecretView({
+      valid: true,
+      payload,
+      inGracePeriod: now.getTime() > expiresAt.getTime(),
+    });
   }
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { inspect } from 'node:util';
 import {
   MemoryOfflineCertificateStorage,
   OfflineCertificateCache,
@@ -42,7 +43,11 @@ describe('OfflineCertificateCache', () => {
     const storage = new MemoryOfflineCertificateStorage();
     const cache = new OfflineCertificateCache(new OfflineVerifier(publicKey), storage);
     expect((await cache.put('machine', value, 'fingerprint_1', now)).valid).toBe(true);
-    expect((await cache.get('machine', 'fingerprint_1', now))?.valid).toBe(true);
+    const verified = await cache.get('machine', 'fingerprint_1', now);
+    expect(verified?.valid).toBe(true);
+    expect(verified?.payload?.license_key).toBe('ABCD-1234-0000-FFFF-9A9A-B0B0-C1C1-D2D2');
+    expect(JSON.stringify(verified)).not.toContain('ABCD-1234-0000-FFFF-9A9A-B0B0-C1C1-D2D2');
+    expect(inspect(verified)).not.toContain('ABCD-1234-0000-FFFF-9A9A-B0B0-C1C1-D2D2');
     await storage.set('machine', { ...value, signature: btoa('forged') });
     expect((await cache.get('machine', 'fingerprint_1', now))?.errorCode).toBe('invalid_signature');
   });

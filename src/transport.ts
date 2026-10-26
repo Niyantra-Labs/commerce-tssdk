@@ -6,7 +6,7 @@ import {
   CommerceTimeoutError,
   CommerceValidationError,
 } from './errors.js';
-import { SDK_VERSION } from './utils.js';
+import { protectSecretView, redactedView, SDK_VERSION, SECRET_FIELD } from './utils.js';
 
 /** Metadata supplied to opt-in hooks. Dynamic path segments and query values are omitted. */
 export interface RequestHookEvent {
@@ -233,10 +233,6 @@ function mentions(error: unknown, secret: string | undefined): boolean {
   return false;
 }
 
-const INSPECT = Symbol.for('nodejs.util.inspect.custom');
-const SECRET_FIELD =
-  /^(?:secret|secret_key|license_key|license_keys|signature|certificate|token|access_token|refresh_token|api_key|password|credentials|client_secret|idempotency_key|download_url|signed_url)$/i;
-
 function gatherSecrets(value: unknown, secrets: Set<string>, sensitive = false): void {
   if (typeof value === 'string') {
     if (sensitive && value) secrets.add(value);
@@ -249,35 +245,6 @@ function gatherSecrets(value: unknown, secrets: Set<string>, sensitive = false):
   if (!value || typeof value !== 'object') return;
   for (const [key, item] of Object.entries(value))
     gatherSecrets(item, secrets, sensitive || SECRET_FIELD.test(key));
-}
-
-function redactedView(value: unknown, secrets: readonly string[]): unknown {
-  if (typeof value === 'string')
-    return secrets.reduce((text, secret) => text.replaceAll(secret, '[REDACTED]'), value);
-  if (Array.isArray(value)) return value.map((item) => redactedView(item, secrets));
-  if (!value || typeof value !== 'object') return value;
-  const safe: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(value)) {
-    Object.defineProperty(safe, key, {
-      value: SECRET_FIELD.test(key) ? '[REDACTED]' : redactedView(item, secrets),
-      enumerable: true,
-      configurable: true,
-    });
-  }
-  return safe;
-}
-
-function protectResponse(value: unknown, secrets: readonly string[]): void {
-  if (!value || typeof value !== 'object') return;
-  Object.defineProperty(value, 'toJSON', {
-    value: () => redactedView(value, secrets),
-    configurable: true,
-  });
-  Object.defineProperty(value, INSPECT, {
-    value: () => redactedView(value, secrets),
-    configurable: true,
-  });
-  for (const child of Object.values(value)) protectResponse(child, secrets);
 }
 
 async function readLimited(response: Response, maxBytes: number): Promise<string> {
@@ -679,7 +646,7 @@ export class Transport {
             cause: new Error('JSON decode failed'),
           });
         }
-        protectResponse(parsed, secrets);
+        protectSecretView(parsed, secrets);
         if (spec.kind === 'data' || spec.kind === 'list') {
           if (!parsed || typeof parsed !== 'object' || !('data' in parsed))
             throw new CommerceProtocolError('Missing data envelope');

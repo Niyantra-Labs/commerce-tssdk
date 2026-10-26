@@ -110,6 +110,8 @@ Local verification checks the signature, machine fingerprint, expiry, and grace 
 
 `isGeneratedLicenseKeyFormat(key)` checks the eight-group uppercase hexadecimal format emitted by the current server. It does not validate a key or reject imported keys in other formats; use `client.licenses.validate()` for that.
 
+Cryptographic checks and their limits are detailed in [the security review](doc/security.md).
+
 ## Runtime support
 
 The built package uses only `fetch`, `AbortController`, and Web Crypto — no Node built-ins and no runtime dependencies. `npm run test:runtimes` runs the same checks (live API calls, server-signed Ed25519 and HMAC verification, signed usage reports, cancellation) in each runtime:
