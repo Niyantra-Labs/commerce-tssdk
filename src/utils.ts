@@ -14,6 +14,7 @@ export function toDate(value: string): Date {
 export type Result<T> =
   { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: CommerceError };
 
+/** Settle a promise into `{ ok: true, value }` or `{ ok: false, error }` instead of throwing. */
 export async function asResult<T>(operation: Promise<T>): Promise<Result<T>> {
   try {
     return { ok: true, value: await operation };

@@ -14,6 +14,7 @@ export class UsageReporter {
       throw new CommerceValidationError('Usage reports require API-key authentication');
   }
 
+  /** Sign and send 1–100 usage reports in one request; the result has one entry per report. Not retried. */
   async report(
     reports: readonly UsageReportInput[],
     options?: RequestOptions,
@@ -61,6 +62,7 @@ export class UsageReporter {
     );
   }
 
+  /** Sign and send a single usage report. */
   reportSingle(report: UsageReportInput, options?: RequestOptions): Promise<UsageIngestResult> {
     return this.report([report], options);
   }

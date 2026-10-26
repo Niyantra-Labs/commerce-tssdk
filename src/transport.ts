@@ -7,14 +7,20 @@ import {
   CommerceValidationError,
 } from './errors.js';
 
+/** Exactly one credential: an API key (server-side only) or a bearer token, optionally a function returning a fresh token per request. */
 export type Authentication =
   | { apiKey: string; bearerToken?: never }
   | { apiKey?: never; bearerToken: string | (() => string | Promise<string>) };
 
+/** Options for `new Client()`. */
 export interface ClientOptions {
+  /** Server origin, optionally with a base path. HTTPS is required except for localhost. */
   baseUrl?: string;
+  /** fetch implementation to use (defaults to the global fetch). */
   fetch?: typeof fetch;
+  /** Per-request timeout in milliseconds (response headers for streamed downloads). */
   timeoutMs?: number;
+  /** Retries for GET requests on 429/502/503/504 and network failures. Mutations are never retried. */
   maxRetries?: number;
   /** Optional per-client request budget. */
   rateLimit?: { requestsPerSecond: number; burst?: number };
@@ -22,13 +28,19 @@ export interface ClientOptions {
   auth: Authentication;
 }
 
+/** Per-call options accepted as the last argument of every method. */
 export interface RequestOptions {
+  /** Cancels the request, any retry backoff, and a streamed body while it is read. */
   signal?: AbortSignal;
+  /** Sent as `X-Request-ID` for correlating server logs. */
   requestId?: string;
+  /** Overrides the client timeout for this call. */
   timeoutMs?: number;
 }
 
+/** How a response body is decoded: `data` unwraps `{ data }`, `list` validates `{ data, total }`, `raw` returns the `Response`, `none` discards the body; omitted returns the JSON as-is. */
 export type ResponseKind = 'data' | 'list' | 'raw' | 'none';
+/** A low-level request description for `Transport.request` (advanced use). */
 export interface RequestSpec {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   path: string;
@@ -71,6 +83,7 @@ function parseJsonLosslessly(text: string): unknown {
   return JSON.parse(text) as unknown;
 }
 
+/** Percent-encode one dynamic path segment so IDs cannot inject `/`, `?`, or `#`. */
 export function pathSegment(value: string): string {
   if (!value || value === '.' || value === '..')
     throw new CommerceValidationError('Invalid path ID');
@@ -242,6 +255,7 @@ export class Transport {
     return 'apiKey' in this.auth ? this.auth.apiKey : undefined;
   }
 
+  /** Send one request through the shared pipeline (auth, retries, timeout, decoding). */
   async request<T>(spec: RequestSpec, options: RequestOptions = {}): Promise<T> {
     const path = `${this.base.pathname.replace(/\/$/, '')}${spec.unprefixed ? '' : '/api/v1'}${spec.path}`;
     if (

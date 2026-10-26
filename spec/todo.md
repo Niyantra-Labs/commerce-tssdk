@@ -3,6 +3,7 @@
 > **Implementation status (2026-10-26):** Phase 1 has started. The repository now has an ESM package, typed service surface, shared transport, signed usage reporter, webhook verifier, an Ed25519 offline verifier, generated Go model baseline, documentation, and growing contract-focused tests. The SDK is **not production ready or published**. The Go SDK is the public API parity target; Commerce server handlers are the wire contract. The corrective checklist below supersedes conflicting bullets. Compared revisions: Go SDK `fe24005`, Commerce `9dd22b9` (offline signing + affiliate payout-default fixes, committed on top of `ab3e04f`).
 >
 > **This session's verified changes** (build/typecheck/test/lint/fmt/docs/pack/live-integration all green against a rebuilt Compose stack; full `go test ./...` green in `commerce`):
+>
 > - Fixed server-contract bugs found by reading `commerce/internal/domain/**/handler.go` and `model.go` against `src/models/generated.ts`: `WebhookEndpointCreateParams`, `CommissionPlanCreateParams`, `AffiliateCreateParams`, `ReferralProgramCreateParams`, and `CommissionPayoutCreateParams` were all missing the server's required `org_id` body field. `WebhookEndpointListParams` was missing the server-supported `org_id` filter. `payout_threshold` → `payout_threshold_cents` in `Affiliate`/`AffiliateCreateParams`/`AffiliateUpdateParams`. `SubscriptionService.pause/resume/cancel` were typed as returning `SubscriptionMutationResult` but the server returns a flat `Subscription` for all three. `WebhookEventService.get()` returns `{data: {event, endpoint_url, endpoint?}}`, not a flat `WebhookEvent` — added `WebhookEventDetail`.
 > - **Found and fixed a second class of bug: nine action methods sent no request body at all, but their handlers do `json.NewDecoder(r.Body).Decode(&input)` and 400 with "invalid request body" on a truly empty body (Go's decoder returns `io.EOF`).** `AffiliateService.approve/reject`, `AffiliateEventService.review`, `CommissionPayoutService.approve/pay/fail/reverse`, and `ReferralEventService.qualify/reward/reject` were all unusable until this session — added the required param types (`AffiliateApproveParams`, `AffiliateRejectParams`, `AffiliateEventReviewParams`, `CommissionPayoutApproveParams`/`PayParams`/`FailParams`/`ReverseParams`, `ReferralEventQualifyParams`/`RewardParams`/`RejectParams`) and threaded them through. Confirmed live: creating a commission plan + affiliate + `reject(id, {reason})` against the real server.
 > - **Found and fixed a Commerce server bug while proving the affiliate fix live**: `affiliate.CreateAffiliate` always bound `payout_threshold_cents`/`payout_currency` as explicit SQL parameters, so a nil/omitted value inserted `NULL` instead of letting the column's `DEFAULT` apply — any affiliate create that omitted them 500'd with a NOT NULL violation. Fixed in `commerce/internal/domain/affiliate/repository.go` to default to `5000`/`"USD"` in Go, matching the migration's actual defaults.
@@ -14,6 +15,7 @@
 > - **Commerce-side changes committed as `9dd22b9` in `commerce` (local `main`, not pushed)** — `internal/crypto/signer.go` (+tests), `internal/domain/offline/repository.go`, `internal/domain/affiliate/repository.go`, `docs/offline.md`. Before committing, `Issue` was also hardened to return an error when the final `UPDATE offline_certificates SET certificate, certificate_hash` fails (previously ignored, which could leave the stored row out of sync with the signed certificate returned to the caller). Re-verified after that change: Docker `go test ./...` green, Compose image rebuilt, all 25 live-smoke assertions passing.
 
 > **Session 3 (2026-10-26) — Commerce tenant isolation (server security fix, commerce `a5a94e3`; affiliate/referral lifecycle fixes, commerce `43579ee`; both local `main`, not pushed):**
+>
 > - **Found and proved a critical server defect:** `/api/v1` had no tenant isolation and, in `AUTH_MODE=delegated`, no authentication. `middleware.OrgScope` was defined but never wired, so every `GetOrgID` returned `""`; API-key identities carried no `OrgID`; by-ID lookups were unscoped; unrecognised API keys fell through as anonymous. Reproduced on the Compose stack: a fake key listed all organizations; org B's real key listed, read, renamed, and created rows inside org A. The production ingress (`infra/k8s/commerce/ingress.yaml`) routes `/api` directly to Commerce, bypassing the `/admin` oauth2-proxy, so production was very likely exposed the same way (not probed).
 > - **Fix (in `commerce`):** new `internal/tenant` guard (fail-closed route table for all 210 `/api/v1` routes, path-ID ownership, query/JSON-body reference ownership mirroring `encoding/json` case folding and first-value decoding, `org_id` pinning), API keys bound to their application's org (inactive/deleted applications stop authenticating), `OrgScope` wired, org filters added to 21 list repositories (referral codes/events previously ignored the `OrgID` they were passed), gateway webhook log list scoped, operator access requires `AUTH_OPERATOR_ROLES` (default `commerce:admin`; `JWT_ROLES_CLAIM` configurable, Zitadel's object-shaped role claim supported), admin UI API calls moved to the proxied `/admin/api/v1` alias with CSRF headers. Docs: `commerce/docs/authentication.md`.
 > - **Verified:** Docker `go test ./...` green (27 packages) including new guard/route-coverage/ownership tests; ownership SQL for every entity executed against the migrated Compose database; live smoke 31/31 including 6 new tenant-isolation checks (anonymous 401, role-less 403, 13 foreign resources 404 by ID, 35 list endpoints with no foreign rows, cross-org create/update/usage-report refused, owners/operators keep access); admin alias + CSRF checked live.
@@ -37,10 +39,11 @@ SDKs stay in sync.
 ## Phase 1: Core SDK
 
 ### 1.1 Project Setup
+
 - [x] Initialize npm package — scoped name `@niyantra/commerce`
 - [ ] `package.json`: author, license = "MIT", description, repository, homepage, keywords, bugs
 - [ ] Set up `src/` module layout — one file per domain (`customer.ts`, `license.ts`, …) + a `services/` folder for HTTP surfaces
-- [ ] Choose ESM-only or dual ESM/CJS from tested consumer needs; for dual output, emit format-correct declarations and verify both import and require
+- [x] ESM-only, chosen from tested consumers: the `exports` map has `types`/`import`/`default`, so ESM imports and Node ≥20.19/≥22.12 CommonJS `require()` (require(esm)) both work from the packed tarball (`npm run test:package`); no separate CJS build or declarations to keep in sync.
 - [x] `tsconfig.json` — ES2022, NodeNext module resolution, `strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, declarations
 - [x] `tsconfig.build.json` extending the root with `rootDir: src`, `outDir: dist`, tests excluded
 - [x] `exports` map in `package.json` matching ESM output and declarations for the root export
@@ -50,13 +53,14 @@ SDKs stay in sync.
 - [ ] Dev dependencies: `typescript`, `tsup`, `vitest`, `@vitest/coverage-v8`, `msw` (mock service worker for integration tests), `@types/node`, `eslint`, `@typescript-eslint/*`, `prettier`, `typedoc`
 - [x] npm scripts: `fmt`, `lint`, `typecheck`, `test`, `build`, `docs`, `audit`
 - [x] `LICENSE` (MIT, same text as Go SDK)
-- [x] `.gitignore` (node_modules/, dist/, coverage/, *.tsbuildinfo, .env*)
+- [x] `.gitignore` (node_modules/, dist/, coverage/, _.tsbuildinfo, .env_)
 - [x] `.prettierrc.json` — single quotes, trailing commas, 100-char width
 - [ ] `eslint.config.js` (flat config) — `@typescript-eslint/strict-type-checked` + `eslint-plugin-import` + `eslint-plugin-unicorn`
 - [x] `.editorconfig`
 - [x] `.nvmrc` pinning Node 20
 
 ### 1.2 Type System & Models
+
 - [ ] Shared: `ListParams`, `ListResponse<T>`, `ApiError`, `DataResponse<T>`, `Metadata`, `Address`
 - [ ] `ListParams` type with `limit`, `offset`, `search`, `status` and a `buildQuery(params)` helper; add only endpoint-specific query fields accepted by the server (there is no general `sort` contract)
 - [ ] Error hierarchy — `CommerceError` base class with subclasses: `CommerceApiError`, `CommerceHttpError`, `CommerceRateLimitError`, `CommerceValidationError`, `CommerceCryptoError`, `CommerceTimeoutError`. Each carries `code`, `status`, `requestId`, `cause`.
@@ -97,6 +101,7 @@ SDKs stay in sync.
 - [ ] Re-export every model from `src/models/index.ts` and surface at package root
 
 ### 1.3 HTTP Client
+
 - [ ] `Client` class holding base URL, auth config, org id, rate limiter, retry policy, `fetch` implementation
 - [ ] Constructor signature: `new Client(options: ClientOptions)` with a discriminated API-key/bearer auth option, base URL, injectable fetch, optional timeout/rate/retry settings, and only verified org/header options
 - [ ] Service namespaces exposed as readonly getters (e.g. `client.customers`, `client.licenses`) that lazily construct thin wrapper objects sharing the client instance
@@ -118,6 +123,7 @@ SDKs stay in sync.
 - [ ] `unprefixed` path support for `/health` (same carveout as rustsdk)
 
 ### 1.4 Service Implementations
+
 Each service is a class (or object literal with methods) that shares a reference to the `Client` instance. All list methods return `Promise<ListResponse<T>>`. Single-item fetches return `Promise<T>` with 404 → `CommerceApiError`.
 
 - [ ] `OrganizationService`: list, create, get, update, delete
@@ -153,6 +159,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] `SystemService`: signingKey, health (health bypasses `/api/v1` prefix)
 
 ### 1.5 Specialized Features
+
 - [x] `UsageReporter`: HMAC-SHA256 signed usage ingestion using the **current server canonical format**; verified byte-for-byte against `commerce/internal/domain/usage/hmac.go` and confirmed end-to-end against a live server. The Go implementation is incompatible (separate, unresolved Go-side bug) but that doesn't affect this SDK.
 - [x] `WebhookVerifier`: HMAC-SHA256 verification of the **current server delivery headers and canonical format**, using a constant-time comparison after strict hex decoding; verified byte-for-byte against `commerce/internal/domain/webhook/util.go` and confirmed end-to-end with a real server-triggered delivery.
 - [x] Framework-agnostic input — accepts `Headers | Record<string, string>` plus `string | Uint8Array` body (case-insensitive header lookup); not yet exercised against a real Express/Fastify/Hono/Next.js handler, only direct calls.
@@ -162,19 +169,21 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] `collectAll(iterable, { cap })` helper that drains an async iterator into `T[]` with an optional hard cap
 
 ### 1.6 Documentation
+
 - [~] `README.md`: quick start, auth/tenancy, errors/retries, pagination, usage reporting, webhooks, offline verification, the proven runtime matrix, test commands, known server limitations, and a **generated endpoint table** (203 methods, rendered from the contract cases + server manifest; `test/docs.test.ts` fails when it drifts, `UPDATE_DOCS=1` regenerates). No badge row or install snippet until the package is published.
 - [x] `doc/developer-guide.md`: source-of-truth hierarchy, model generation rules, the six test layers and when to regenerate fixtures, the live-server and runtime-matrix setup, request-pipeline rules (unbound fetch, non-blocking body discard, streaming abort), retry semantics, crypto contracts, tenant-guard behavior, release checklist.
-- [ ] TSDoc `/** */` on every exported class, interface, and method with at least one usage example per major surface (newer services carry doc comments; older services and generated models mostly do not)
+- [~] TSDoc on every exported service class and method, every `client.*` namespace, `ClientOptions`/`RequestOptions`/`Authentication`, the verifiers, `UsageReporter`, and helpers (185 added in session 3; behavioral claims checked against the server: status-only returns, public routes, lifecycle 409s, bulk limits). Still open: per-field docs on the generated models, and usage examples inside TSDoc (the README and `examples/` carry them today).
 - [x] `typedoc` configuration + generated HTML docs under `.typedoc/` (opt-in via `npm run docs`, excluded from the npm tarball)
 - [x] Examples, all typechecked by `npm run typecheck` (flows proven by the live smoke; the example files themselves are not executed): `quickstart.ts`, `usage-reporting.ts`, `webhook-handler.ts` (framework-neutral `Request`/`Response`, works in Hono/edge handlers as-is), `offline-verification.ts`, `pagination.ts`, `release-download.ts` (streamed to disk with incremental SHA-256), `browser.ts` (per-request bearer token).
-- [ ] `examples/webhook-handler-express.ts` — Express middleware (raw-body capture)
-- [ ] `examples/subscription-lifecycle.ts`
+- [x] `examples/webhook-handler-express.ts` — Express 5 with `express.raw()`; **run unmodified against a real Commerce delivery**: verified (server recorded `delivered`), a server retry of the same delivery deduplicated by `X-Niyantra-Delivery-Id`, and a forged signature rejected with 401. `@types/express` is a pinned dev dependency so the example typechecks.
+- [x] `examples/subscription-lifecycle.ts` — create, pause/resume, change plan with proration, seats, cancel at period end, error handling (typechecked; the same flow is proven by the live smoke)
 
 ---
 
 ## Phase 2: Testing
 
 ### 2.1 Unit Tests (vitest)
+
 - [x] Initial transport and crypto regression suite: auth selection, HTTPS requirement, query omission, Retry-After, no mutation retry, shared token bucket, abort/timeout (including bearer callback), malformed responses, pagination consistency/cap, webhook timestamp/signature/JSON boundaries.
 - [ ] Client construction and option validation tests
 - [ ] Request building tests — assert final URL, headers, body via a fetch mock
@@ -185,11 +194,13 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] AbortSignal propagation tests — verify cancelling aborts the underlying fetch and rejects with `CommerceTimeoutError` / `AbortError`
 
 ### 2.2 Service Tests (with MSW)
+
 - [x] `test/contract.test.ts`: one MSW-backed contract case per public service method (205 cases; a meta-test fails if any method lacks one). Each case is checked against `test/fixtures/routes.json`, generated from the Commerce Go handlers by `scripts/route-manifest.py` (210 routes: verb/path, success status, response envelope `data`/`list`/`status`/`direct`/`raw`, and whether the handler requires, accepts, or ignores a JSON body). Asserts the request hits a registered route (most-specific match, as ServeMux does), the exact query, a JSON body exactly when the handler 400s without one, no body when the handler reads none, and that the SDK decodes the envelope the handler really writes. `npm run contract:check` fails when the fixture drifts from the server source (`COMMERCE_REPO`, default `../commerce`); `npm run contract:manifest` regenerates it.
 - [x] Bugs it found and fixed (session 3): `licenses.suspend` sent a `reason` the handler never reads (now `suspend(id)`); `auditLogs.exportCsv` never sent `format=csv`, so it received JSON; `licenses.upsertEntitlementOverride` discarded the saved override the server returns (now typed `EntitlementOverride`; `value` is a string on the wire); the transport awaited `body.cancel()`, which never settles under some fetch implementations (MSW 2.15 reproduces it) — discarding a body is now non-blocking. Override/suspend/CSV export re-proven live.
 - Coverage maps to the old checklist as: organizations, products, plans (+compare), customers + contacts, licenses (all 15 methods), activations, machines (+decommission), subscriptions (full lifecycle), entitlements + override, addons + purchase, usage meters, usage adjustment/credit + reporter, orders (create/get/checkout/fulfill — Go's update/pay have no server route), payments (list/get/refund/reconcile), invoices (list/get/issue/void/pdf — Go's send has no server route), webhook endpoints/events, applications + API keys, offline certificates, referral programs/codes/events, affiliates/links/events/payouts, audit logs (+CSV), system, and the server-extension services (gateways, notifications, application notifications, releases).
 
 ### 2.3 Specialized Feature Tests
+
 - [ ] `UsageReporter` HMAC signature generation tests with golden vectors shared across gosdk/rustsdk/tssdk
 - [ ] `UsageReporter` retry behaviour tests
 - [ ] `WebhookVerifier` signature verification tests (known-good + known-bad vectors)
@@ -202,6 +213,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] `collectAll` cap tests
 
 ### 2.4 Integration Tests
+
 - [x] Docker Compose live smoke: isolated Commerce/Postgres/Redis on loopback port 19094; organization, product, customer, application, API key, authenticated list, license validation, signed usage ingestion, contacts, and pagination. Run with `npm run test:integration`.
 - [ ] Fixture helpers — spin up an MSW handler set and return a pre-configured `Client`
 - [x] End-to-end license lifecycle (create → validate → activate → deactivate) against the Compose server
@@ -212,6 +224,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [x] End-to-end commission plan create → affiliate create → affiliate reject (regression test for the empty-body action fix), against the Compose server.
 
 ### 2.5 Runtime Compatibility Tests
+
 - [x] `npm run test:runtimes` (`integration/runtime-smoke.mjs`) bootstraps a tenant on the live Compose server, then runs the same runtime-neutral module (`integration/runtime/checks.mjs`: web-standard globals plus the built package only) in every available runtime: health over fetch, public license validation, API-key list + `listAll` pagination, **the server's real Ed25519 offline-certificate signature verified with Web Crypto**, **a real server webhook delivery's HMAC verified with Web Crypto** (plus tamper rejection), a usage report HMAC-signed in that runtime and accepted by the server, and caller-`AbortSignal` cancellation. Missing runtimes report SKIP; failures fail the run.
 - [x] Proven in session 3: Node 24.22, **Node 20.20** (`node:20-alpine`, sharing the app container's network), Bun 1.1.26, Deno 2.1.4 (with `--allow-net` for the server only and `--allow-env=RUNTIME_CONFIG` — no other permissions), Chrome 155 headless (a real cross-origin page → server), and workerd 1.20260730 via Miniflare 4.20260730 (`MINIFLARE_DIR` pointing at a directory with miniflare installed; not a project dependency). 7/7 checks in all six.
 - [x] Found and fixed: **the SDK was unusable in every browser** — the transport called `fetch` as a method of the transport object, which browsers reject with "Illegal invocation" (Node/Bun/Deno/workerd tolerate it). fetch is now always called unbound; regression unit test added.
@@ -222,6 +235,7 @@ Each service is a class (or object literal with methods) that shares a reference
 ## Phase 3: Enhancements
 
 ### 3.1 Observability
+
 - [ ] Pluggable logger interface (`{ debug, info, warn, error }`) — defaults to no-op
 - [ ] Request/response debug events gated behind a `debug: true` option
 - [ ] Request timing metrics exposed via `onResponse` callback (`durationMs`, `attempt`, `retries`)
@@ -229,6 +243,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] OpenTelemetry integration via a thin adapter in a separate `@niyantra/commerce-otel` package so the core stays dependency-free
 
 ### 3.2 Advanced Client Features
+
 - [ ] Middleware chain — `client.use((req, next) => next(req))` for request/response interception
 - [ ] Custom header injection per-request via the method options bag
 - [ ] Proxy support through fetch injection (`undici.Agent` / `https-proxy-agent` examples in docs, not a hard dep)
@@ -238,6 +253,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] Request ID propagation (`X-Request-ID` in + out, exposed on errors as `error.requestId`)
 
 ### 3.3 Developer Experience
+
 - [ ] TSDoc examples for all major types and methods
 - [ ] Typed webhook event handling — `onWebhookEvent('license.issued', event => event.data)` with narrowed event data via mapped types
 - [ ] `defineWebhookHandler({ secret, handlers })` factory returning a framework-agnostic request handler
@@ -247,6 +263,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] Type-level tests using `expect-type` or `tsd` to lock in the public API shape
 
 ### 3.4 Additional Helpers
+
 - [ ] Machine fingerprint generation utility (cross-runtime — hashes stable machine inputs, documents what differs per platform)
 - [ ] License key format validator
 - [ ] Offline certificate caching helper (pluggable storage: in-memory, `localStorage`, `fs`)
@@ -258,6 +275,7 @@ Each service is a class (or object literal with methods) that shares a reference
 ## Phase 4: CI/CD & Release
 
 ### 4.1 CI Pipeline
+
 - [ ] GitHub Actions workflow: install, typecheck, lint, test, build on the published supported Node versions
 - [ ] Bun + Deno jobs for runtime compatibility
 - [ ] Test coverage reporting via `@vitest/coverage-v8` → codecov
@@ -266,6 +284,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] Cross-platform matrix: ubuntu, macos, windows
 
 ### 4.2 Release Management
+
 - [ ] Semantic versioning with `changesets` (`.changeset/` directory + CI check)
 - [ ] `CHANGELOG.md` auto-generated from changesets
 - [ ] `npm publish` automation on tagged releases (with `NPM_TOKEN` secret)
@@ -274,6 +293,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] Verify `types` / `exports` resolution via `@arethetypeswrong/cli`
 
 ### 4.3 Quality Gates
+
 - [ ] Minimum 80% test coverage
 - [ ] Zero ESLint warnings with `--max-warnings 0`
 - [ ] `tsc --noEmit` clean on the root tsconfig
@@ -288,12 +308,14 @@ Each service is a class (or object literal with methods) that shares a reference
 ## Phase 5: Advanced Features
 
 ### 5.1 Code Generation
+
 - [ ] OpenAPI spec-driven codegen via `openapi-typescript` or a custom pipeline
 - [ ] Auto-generate models from the Commerce server's OpenAPI schema
 - [ ] Sync SDK types with server schema changes on a scheduled CI job
 - [ ] Generated MSW mocks for consumer testing
 
 ### 5.2 Performance
+
 - [ ] Tree-shaking verification — importing a single service should not pull every other service into the bundle
 - [ ] Concurrent request throughput benchmarks
 - [ ] Bundle size profiling for the specialized feature surface
@@ -301,6 +323,7 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] Response streaming for large lists via `ReadableStream`
 
 ### 5.3 Ecosystem
+
 - [ ] React hooks package (`@niyantra/commerce-react`) with `useLicense`, `useSubscription`, `useUsage` wrappers over TanStack Query
 - [ ] Next.js App Router helpers — server actions + route handler factories
 - [ ] Hono middleware package
@@ -319,6 +342,7 @@ Each service is a class (or object literal with methods) that shares a reference
 **Parity policy**: every public Go SDK method and helper needs an equivalent or an explicit documented server blocker here. Track new Commerce server routes independently; the Go SDK TODO is not a wire-contract source.
 
 **Idiom translations (Go → TypeScript)**:
+
 - Go's `*T` optional request fields → TS `field?: T`; the serialiser strips
   `undefined` keys so they never hit the wire (equivalent to `omitempty`).
 - Go's pointer helpers (`String(s)`, `Int(i)`) → unnecessary in TS; pass
@@ -433,7 +457,7 @@ For **every** listed method: verify exact verb/path, filter map, request and ret
 - [ ] Offline verification, when server contract is fixed: import the server's standard-base64 **raw 32-byte Ed25519 public key** as a Web Crypto `raw` key, verify exact signed bytes, then check expiry/grace/fingerprint/approval and key rotation. Document that purely offline checks cannot know current DB revocation. Never treat an unsigned decoded payload as verified.
 - [~] Test every parity route with request/response fixtures from current handlers: direct versus wrapped JSON, null fields, status-only actions, 204, binary, 4xx/5xx, non-JSON, request IDs, and `Retry-After`. Generate crypto golden vectors from server code and run integration tests against a real server/test harness for license, subscription, usage, webhook, order, invoice, and offline workflows; mocks alone cannot prove compatibility. **Done for:** license lifecycle, usage signing+ingestion, webhook delivery+signature verification (including tamper rejection), offline certificate issue + online verify (valid and fingerprint-mismatch) + **local `OfflineVerifier` verify (valid and wrong-signature)**, commission plan + affiliate create/reject, all against the live Compose server. Session 3 added plan compare, the subscription lifecycle, affiliate approve/links/events/review, payout approve/pay/fail/reverse, referral program/code/event qualify/reward/reject, and cross-tenant isolation. **Still mocked-only or missing:** order/invoice/payment flows, releases, gateway configs, notifications.
 - [ ] Test unsafe retries (write not repeated), safe idempotent retries, abort before/during fetch/backoff/rate wait, timeout, malformed URL/ID, credential collision, unsafe integers, huge error bodies, missing `data`, signature tampering, webhook replay, clock skew, and secrets redaction.
-- [~] Runtime smoke done for Node 20/24, Bun, Deno, Chrome, and workerd (fetch, abort, Ed25519 + HMAC Web Crypto, live server calls; see §2.5). Still open: CommonJS consumers (the package is ESM-only), publint/Are-the-Types-Wrong, Firefox/Safari. Current server CORS allows `Content-Type`, `Authorization`, `X-Request-ID`, `X-API-Key` but omits `X-Org-ID` and `X-Usage-*`, and does not expose response `X-Request-ID`; document and/or fix server-side requirements before claiming browser support for those features.
+- [~] Runtime smoke done for Node 20/24, Bun, Deno, Chrome, and workerd (fetch, abort, Ed25519 + HMAC Web Crypto, live server calls; see §2.5). Packaging proven in session 3 by `npm run test:package` (installs the packed tarball into a fresh project on Node 24 and Node 20.20: ESM import, CommonJS `require` via Node's require(esm) after adding a `default` export condition, and strict TypeScript consumers under `nodenext` and `bundler`); publint 0.3.25 "All good"; Are-the-Types-Wrong 0.18.5 green for node10/node16-ESM/bundler with the expected ESM-only warning for CJS (which does not model require(esm); CommonJS consumers need Node ≥20.19 or ≥22.12). Still open: Firefox, Safari, Vercel Edge. Current server CORS allows `Content-Type`, `Authorization`, `X-Request-ID`, `X-API-Key` but omits `X-Org-ID` and `X-Usage-*`, and does not expose response `X-Request-ID`; document and/or fix server-side requirements before claiming browser support for those features.
 - [ ] Document each namespace's actual server semantics, auth/scope, response shape, errors, retry behavior, pagination, date/integer policy, unsupported Go methods, and server compatibility. Use backend-only API-key examples and short-lived browser bearer examples only where supported. State offline-verification status honestly.
 - [ ] CI gate: lint, strict typecheck, contract and integration tests, supported runtime smoke tests, build, `npm pack`, package/type resolution, dependency audit, and route/parity diff. Publish with semver and provenance only after P0 blockers close and tarball contents/exports are verified.
 

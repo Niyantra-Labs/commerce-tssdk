@@ -1,6 +1,7 @@
 import { CommerceCryptoError, CommerceValidationError } from './errors.js';
 import type { WebhookEventEnvelope } from './models/contracts.js';
 
+/** Request headers as a `Headers` object or a plain record (lookups are case-insensitive). */
 export type HeaderSource = Headers | Readonly<Record<string, string>>;
 function header(source: HeaderSource, name: string): string | undefined {
   if (source instanceof Headers) return source.get(name) ?? undefined;
@@ -30,6 +31,7 @@ export class WebhookVerifier {
       throw new CommerceValidationError('Invalid webhook verifier configuration');
   }
 
+  /** Verify a delivery's v1 signature and timestamp over the raw body, then parse the event envelope. Rejects with `CommerceCryptoError`. */
   async verify(
     headers: HeaderSource,
     body: Uint8Array | string,

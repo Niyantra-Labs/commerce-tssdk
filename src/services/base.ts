@@ -10,6 +10,7 @@ export class CollectionService<R, List extends PageParams = PageParams, Detail =
     protected readonly path: string,
   ) {}
 
+  /** One page of results as `{ data, total }`. */
   list(params?: List, options?: RequestOptions): Promise<ListResponse<R>> {
     return this.http.request(
       {
@@ -22,6 +23,7 @@ export class CollectionService<R, List extends PageParams = PageParams, Detail =
     );
   }
 
+  /** Get one item by ID. A missing or foreign item rejects with `CommerceApiError` 404. */
   get(id: string, options?: RequestOptions): Promise<Detail> {
     return this.http.request({ method: 'GET', path: this.item(id), kind: 'data' }, options);
   }
@@ -74,23 +76,27 @@ export class ResourceService<
   CreateResult = R,
   Detail = R,
 > extends CollectionService<R, List, Detail> {
+  /** Create an item. */
   create(params: Create, options?: RequestOptions): Promise<CreateResult> {
     return this.http.request(
       { method: 'POST', path: this.path, body: params, kind: 'data' },
       options,
     );
   }
+  /** Partially update an item (PATCH): omitted fields are left unchanged. */
   update(id: string, params: Update, options?: RequestOptions): Promise<R> {
     return this.http.request(
       { method: 'PATCH', path: this.item(id), body: params, kind: 'data' },
       options,
     );
   }
+  /** Delete an item. */
   delete(id: string, options?: RequestOptions): Promise<void> {
     return this.http.request({ method: 'DELETE', path: this.item(id), kind: 'none' }, options);
   }
 }
 
+/** Collect an async iterable (such as `listAll()`) into an array, rejecting once `cap` items are exceeded. */
 export async function collectAll<T>(items: AsyncIterable<T>, cap = 10000): Promise<T[]> {
   if (!Number.isSafeInteger(cap) || cap < 1) throw new RangeError('cap must be positive');
   const result: T[] = [];

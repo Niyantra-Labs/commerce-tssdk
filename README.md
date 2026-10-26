@@ -21,7 +21,7 @@ for (const license of page.data) console.log(license.id, license.status);
 
 `baseUrl` must be HTTPS, except `localhost`/`127.0.0.1`/`[::1]` for local development. Options: `auth` (exactly one of `{ apiKey }` or `{ bearerToken }`, where `bearerToken` may be a function returning a fresh token per request), `fetch` (inject undici, a test double, or an instrumented fetch), `timeoutMs`, `maxRetries`, and an optional client-side `rateLimit`. Every method takes a final options argument with `signal`, `requestId`, and `timeoutMs`.
 
-More examples live in [`examples/`](examples): [quick start](examples/quickstart.ts), [pagination](examples/pagination.ts), [usage reporting](examples/usage-reporting.ts), [webhook handler](examples/webhook-handler.ts), [offline verification](examples/offline-verification.ts), [release download](examples/release-download.ts), and [browser use](examples/browser.ts).
+More examples live in `examples/`: [quick start](examples/quickstart.ts), [pagination](examples/pagination.ts), [usage reporting](examples/usage-reporting.ts), [webhook handler](examples/webhook-handler.ts), [offline verification](examples/offline-verification.ts), [release download](examples/release-download.ts), and [browser use](examples/browser.ts).
 
 ## Authentication and tenancy
 
