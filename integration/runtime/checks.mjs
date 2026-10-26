@@ -8,6 +8,7 @@
 import {
   Client,
   CommerceAbortError,
+  CommerceApiError,
   CommerceNetworkError,
   OfflineVerifier,
   WebhookVerifier,
@@ -116,6 +117,18 @@ export async function runChecks(config, runtime) {
     }
     const result = await report();
     assert(result.results[0]?.status === 'accepted', JSON.stringify(result));
+  });
+
+  await check('API errors carry the server request ID (exposed through CORS)', async () => {
+    try {
+      await keyed.products.get('00000000-0000-0000-0000-000000000000');
+    } catch (error) {
+      assert(error instanceof CommerceApiError, `expected CommerceApiError, got ${error?.name}`);
+      assert(error.status === 404, `expected 404, got ${error.status}`);
+      assert(typeof error.requestId === 'string' && error.requestId.length > 0, 'no requestId');
+      return;
+    }
+    throw new Error('missing product resolved');
   });
 
   await check('caller AbortSignal cancels before the request', async () => {

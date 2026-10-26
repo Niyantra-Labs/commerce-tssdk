@@ -84,7 +84,7 @@ The built package uses only `fetch`, `AbortController`, and Web Crypto — no No
 | Cloudflare Workers | workerd 1.20260730 (Miniflare) |                                                |
 | Browsers           | Chrome 155                     | cross-origin; see below                        |
 
-In browsers, use a short-lived bearer token, never an API key. Usage reporting cannot run in a browser because the server's CORS policy does not allow the `X-Usage-*` signature headers, and the server does not expose `X-Request-ID` to browser JavaScript. The package is ESM-only; CommonJS code can `require()` it on Node 20.19+ or 22.12+ (Node's require(esm)). Firefox, Safari, and Vercel Edge have not been tested yet.
+In browsers, use a short-lived bearer token, never an API key. Usage reporting cannot run in a browser because the server's CORS policy does not allow the `X-Usage-*` signature headers. The server exposes `X-Request-ID`, `Retry-After`, `Content-Disposition`, and `X-Checksum-SHA256` to browser code, so errors carry request IDs there too. The package is ESM-only; CommonJS code can `require()` it on Node 20.19+ or 22.12+ (Node's require(esm)). Firefox, Safari, and Vercel Edge have not been tested yet.
 
 ## Testing
 
