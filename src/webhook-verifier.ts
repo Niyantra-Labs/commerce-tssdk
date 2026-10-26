@@ -47,6 +47,7 @@ export class WebhookVerifier {
     body: Uint8Array | string,
     now = Date.now(),
   ): Promise<WebhookEventEnvelope> {
+    if (!Number.isFinite(now)) throw new CommerceCryptoError('Invalid verification clock');
     const version = header(headers, 'X-Niyantra-Signature-Version');
     const timestamp = header(headers, 'X-Niyantra-Timestamp');
     const signature = header(headers, 'X-Niyantra-Signature');

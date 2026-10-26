@@ -61,6 +61,8 @@ export class OfflineVerifier {
     fingerprint: string,
     now: Date = new Date(),
   ): Promise<OfflineLocalVerifyResult> {
+    if (Number.isNaN(now.getTime()))
+      throw new CommerceValidationError('Invalid verification clock');
     let payloadBytes: Uint8Array;
     try {
       payloadBytes = base64ToBytes(certificateBase64);

@@ -46,6 +46,13 @@ describe('webhook verification boundaries', () => {
     }
   });
 
+  it('rejects a non-finite verification clock', async () => {
+    const headers = await signed(body, String(now / 1000));
+    await expect(new WebhookVerifier('whsec_test').verify(headers, body, NaN)).rejects.toThrow(
+      'Invalid verification clock',
+    );
+  });
+
   it('rejects wrong versions, malformed signatures, and tampered bytes', async () => {
     const headers = await signed(body, String(now / 1000));
     const verifier = new WebhookVerifier('whsec_test');

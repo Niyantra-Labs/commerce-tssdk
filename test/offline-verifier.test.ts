@@ -140,4 +140,20 @@ describe('OfflineVerifier', () => {
       CommerceCryptoError,
     );
   });
+
+  it('rejects an invalid caller clock before checking expiry', async () => {
+    const { pair, publicKeyBase64 } = await generateKeyPair();
+    const { certificateBase64, signatureBase64 } = await signPayload(
+      pair.privateKey,
+      certificatePayload(),
+    );
+    await expect(
+      new OfflineVerifier(publicKeyBase64).verify(
+        certificateBase64,
+        signatureBase64,
+        'fp_abc123',
+        new Date(NaN),
+      ),
+    ).rejects.toThrow('Invalid verification clock');
+  });
 });
