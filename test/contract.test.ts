@@ -175,6 +175,7 @@ describe('service contracts against the server route manifest', () => {
         expect(request.body, 'handler rejects an empty body with 400').toEqual(c.body ?? IN);
       } else if (info.body === 'none') {
         expect(request.rawBody, 'handler reads no body').toBe('');
+        expect(request.multipart, 'handler reads no multipart body').toBeUndefined();
       } else if (c.body !== undefined) {
         expect(request.body).toEqual(c.body);
       }

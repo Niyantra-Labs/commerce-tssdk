@@ -72,7 +72,7 @@ for path, src in sources.items():
         if body is None:
             entry['envelope'] = 'unknown'
         else:
-            if 'ParseMultipartForm' in body:
+            if 'ParseMultipartForm' in body or 'ParseArtifactUpload(' in body:
                 entry['body'] = 'multipart'
             elif re.search(r'if err := json\.NewDecoder\(r\.Body\)\.Decode\(|io\.ReadAll\((?:io\.LimitReader\()?r\.Body', body):
                 entry['body'] = 'required'  # an empty body is rejected with 400
