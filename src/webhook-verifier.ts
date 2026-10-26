@@ -23,12 +23,21 @@ function equal(a: Uint8Array, b: Uint8Array): boolean {
 
 /** Verifies current `v1` Niyantra webhook deliveries before JSON parsing. */
 export class WebhookVerifier {
+  private readonly secrets: readonly string[];
+
   constructor(
-    private readonly secret: string,
+    secret: string | readonly string[],
     private readonly toleranceSeconds = 300,
   ) {
-    if (!secret || !Number.isSafeInteger(toleranceSeconds) || toleranceSeconds < 0)
+    const secrets = typeof secret === 'string' ? [secret] : secret;
+    if (
+      !secrets.length ||
+      secrets.some((value) => !value) ||
+      !Number.isSafeInteger(toleranceSeconds) ||
+      toleranceSeconds < 0
+    )
       throw new CommerceValidationError('Invalid webhook verifier configuration');
+    this.secrets = [...secrets];
   }
 
   /** Verify a delivery's v1 signature and timestamp over the raw body, then parse the event envelope. Rejects with `CommerceCryptoError`. */
@@ -49,18 +58,21 @@ export class WebhookVerifier {
     const digest = hex(
       new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(bytes))),
     );
-    const key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(this.secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign'],
-    );
-    const expected = new Uint8Array(
-      await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${digest}`)),
-    );
-    if (!equal(expected, decodeHex(signature)))
-      throw new CommerceCryptoError('Invalid webhook signature');
+    const actual = decodeHex(signature);
+    const signed = new TextEncoder().encode(`${timestamp}.${digest}`);
+    let matched = 0;
+    for (const secret of this.secrets) {
+      const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign'],
+      );
+      const expected = new Uint8Array(await crypto.subtle.sign('HMAC', key, signed));
+      matched |= Number(equal(expected, actual));
+    }
+    if (!matched) throw new CommerceCryptoError('Invalid webhook signature');
     let event: unknown;
     try {
       event = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));

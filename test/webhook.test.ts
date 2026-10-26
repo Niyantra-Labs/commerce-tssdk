@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CommerceCryptoError, WebhookVerifier } from '../src/index.js';
+import { CommerceCryptoError, CommerceValidationError, WebhookVerifier } from '../src/index.js';
 
 async function signed(body: Uint8Array, timestamp: string, secret = 'whsec_test') {
   const digest = Buffer.from(await crypto.subtle.digest('SHA-256', new Uint8Array(body))).toString(
@@ -70,5 +70,28 @@ describe('webhook verification boundaries', () => {
       const headers = await signed(bytes, String(now / 1000));
       await expect(verifier.verify(headers, bytes, now)).rejects.toThrow(message);
     }
+  });
+
+  it('accepts a previous secret during rotation and rejects it after removal', async () => {
+    const headers = await signed(body, String(now / 1000), 'whsec_old');
+    await expect(
+      new WebhookVerifier(['whsec_current', 'whsec_old']).verify(headers, body, now),
+    ).resolves.toMatchObject({ id: 'evt_1' });
+    await expect(new WebhookVerifier(['whsec_current']).verify(headers, body, now)).rejects.toThrow(
+      'Invalid webhook signature',
+    );
+  });
+
+  it('rejects empty rotation lists and empty secrets without downgrading version checks', async () => {
+    expect(() => new WebhookVerifier([])).toThrow(CommerceValidationError);
+    expect(() => new WebhookVerifier(['whsec_current', ''])).toThrow(CommerceValidationError);
+    const headers = await signed(body, String(now / 1000));
+    await expect(
+      new WebhookVerifier(['whsec_test']).verify(
+        { ...headers, 'x-niyantra-signature-version': 'v0' },
+        body,
+        now,
+      ),
+    ).rejects.toBeInstanceOf(CommerceCryptoError);
   });
 });

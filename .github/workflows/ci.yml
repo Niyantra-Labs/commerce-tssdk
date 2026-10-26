@@ -27,6 +27,8 @@ jobs:
       - run: npm run lint
       - run: npm run fmt:check
       - run: npm test
+      - if: matrix.node == '24'
+        run: npm run coverage
       - run: npm run docs
       - run: npm run test:package
       - run: npm audit --omit=dev
