@@ -106,6 +106,10 @@ if (!result.valid) console.error(result.errorCode);
 
 Local verification checks the signature, machine fingerprint, expiry, and grace period. It cannot know about revocation — use `client.offlineCertificates.verify()` when the machine is online. Certificates issued before Commerce's 2026-10-26 signing fix must be reissued to verify locally.
 
+`OfflineCertificateCache` accepts a pluggable `OfflineCertificateStorage` and re-verifies the signature, fingerprint, and expiry on every read. `MemoryOfflineCertificateStorage` is volatile; persistent adapters must protect the certificate bytes, which contain a license key. A cache still cannot detect revocation while offline.
+
+`isGeneratedLicenseKeyFormat(key)` checks the eight-group uppercase hexadecimal format emitted by the current server. It does not validate a key or reject imported keys in other formats; use `client.licenses.validate()` for that.
+
 ## Runtime support
 
 The built package uses only `fetch`, `AbortController`, and Web Crypto — no Node built-ins and no runtime dependencies. `npm run test:runtimes` runs the same checks (live API calls, server-signed Ed25519 and HMAC verification, signed usage reports, cancellation) in each runtime:

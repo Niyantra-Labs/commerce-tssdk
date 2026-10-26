@@ -10,7 +10,10 @@ import { TextEncoder } from 'node:util';
 import {
   Client,
   defineWebhookHandler,
+  isGeneratedLicenseKeyFormat,
   isKnownWebhookEvent,
+  MemoryOfflineCertificateStorage,
+  OfflineCertificateCache,
   OfflineVerifier,
   WebhookVerifier,
 } from '../dist/index.js';
@@ -129,6 +132,7 @@ async function main() {
     perpetual: true,
   });
   assert.ok(license.id);
+  assert.ok(isGeneratedLicenseKeyFormat(license.license_key));
   passed('license create');
 
   const validation = await anonymous.licenses.validate({ license_key: license.license_key });
@@ -281,6 +285,14 @@ async function main() {
   assert.equal(localValid.valid, true);
   assert.equal(localValid.payload?.license_id, license.id);
   passed('offline certificate local verify against the real server signing key (valid)');
+  const cache = new OfflineCertificateCache(offlineVerifier, new MemoryOfflineCertificateStorage());
+  const signedCertificate = {
+    certificate: issued.certificate.certificate,
+    signature: issued.signature,
+  };
+  assert.equal((await cache.put(license.id, signedCertificate, fingerprint)).valid, true);
+  assert.equal((await cache.get(license.id, fingerprint))?.payload?.license_id, license.id);
+  passed('offline certificate cache re-verifies a real server-signed certificate');
 
   const localTampered = await offlineVerifier.verify(
     issued.certificate.certificate,

@@ -52,5 +52,14 @@ export type { WebhookDedupe, WebhookHandlerMap, WebhookHandlerOptions } from './
 export * from './webhook-events.js';
 export type { HeaderSource } from './webhook-verifier.js';
 export { OfflineVerifier } from './offline-verifier.js';
+export {
+  OfflineCertificateCache,
+  MemoryOfflineCertificateStorage,
+} from './offline-certificate-cache.js';
+export type {
+  CachedOfflineCertificate,
+  OfflineCertificateStorage,
+} from './offline-certificate-cache.js';
+export { isGeneratedLicenseKeyFormat } from './license-key.js';
 export { toDate, asResult } from './utils.js';
 export type { Result } from './utils.js';
