@@ -162,16 +162,12 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] `collectAll(iterable, { cap })` helper that drains an async iterator into `T[]` with an optional hard cap
 
 ### 1.6 Documentation
-- [ ] `README.md` with badge row, install snippet, quick-start, full endpoint table
-- [ ] `doc/developer-guide.md` with architecture notes, retry semantics, auth flows, runtime compatibility matrix (Node / Bun / Deno / browser / Workers / Vercel Edge)
-- [ ] TSDoc `/** */` on every exported class, interface, and method with at least one usage example per major surface
+- [~] `README.md`: quick start, auth/tenancy, errors/retries, pagination, usage reporting, webhooks, offline verification, the proven runtime matrix, test commands, known server limitations, and a **generated endpoint table** (203 methods, rendered from the contract cases + server manifest; `test/docs.test.ts` fails when it drifts, `UPDATE_DOCS=1` regenerates). No badge row or install snippet until the package is published.
+- [x] `doc/developer-guide.md`: source-of-truth hierarchy, model generation rules, the six test layers and when to regenerate fixtures, the live-server and runtime-matrix setup, request-pipeline rules (unbound fetch, non-blocking body discard, streaming abort), retry semantics, crypto contracts, tenant-guard behavior, release checklist.
+- [ ] TSDoc `/** */` on every exported class, interface, and method with at least one usage example per major surface (newer services carry doc comments; older services and generated models mostly do not)
 - [x] `typedoc` configuration + generated HTML docs under `.typedoc/` (opt-in via `npm run docs`, excluded from the npm tarball)
-- [ ] `examples/quickstart.ts` — license management
-- [ ] `examples/usage-reporting.ts` — HMAC-signed batches
-- [ ] `examples/webhook-handler-express.ts` — Express middleware with signature verification
-- [ ] `examples/webhook-handler-hono.ts` — edge-runtime Hono handler
-- [ ] `examples/offline-verification.ts` — Ed25519
-- [ ] `examples/pagination.ts` — async iterator consumption
+- [x] Examples, all typechecked by `npm run typecheck` (flows proven by the live smoke; the example files themselves are not executed): `quickstart.ts`, `usage-reporting.ts`, `webhook-handler.ts` (framework-neutral `Request`/`Response`, works in Hono/edge handlers as-is), `offline-verification.ts`, `pagination.ts`, `release-download.ts` (streamed to disk with incremental SHA-256), `browser.ts` (per-request bearer token).
+- [ ] `examples/webhook-handler-express.ts` — Express middleware (raw-body capture)
 - [ ] `examples/subscription-lifecycle.ts`
 
 ---

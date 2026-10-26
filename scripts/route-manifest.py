@@ -108,5 +108,11 @@ for path, src in sources.items():
         routes[m.group(1)] = {'source': os.path.relpath(path, root) + ':inline',
                               'status': SUCCESS.get(found[0][0], 200) if found else 200,
                               'envelope': classify(found[0][1]) if found else 'unknown'}
+# Routes the server's tenant guard serves without credentials (license key,
+# signed token, or provider signature is the credential).
+rules = open(os.path.join(root, 'internal', 'tenant', 'routes.go')).read()
+for pattern in re.findall(r'"([A-Z]+ /api/v1/[^"]*)":\s*\{Access: Public', rules):
+    if pattern in routes:
+        routes[pattern]['public'] = True
 json.dump(dict(sorted(routes.items())), sys.stdout, indent=1)
 print()

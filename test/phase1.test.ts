@@ -238,3 +238,20 @@ describe('affiliate and referral list filters', () => {
     await expect(client.licenses.list({ product_id: null })).rejects.toThrow(/cannot be null/);
   });
 });
+
+describe('public type exports', () => {
+  it('names every service result type from the package root', () => {
+    type Results = [
+      import('../src/index.js').GatewayProvider,
+      import('../src/index.js').GatewayProviderSchema,
+      import('../src/index.js').GatewayConfigTestResult,
+      import('../src/index.js').NotificationTemplateDetail,
+      import('../src/index.js').NotificationDetail,
+      import('../src/index.js').ReleaseDownload,
+      import('../src/index.js').EntitlementOverride,
+      import('../src/index.js').ReleaseDetail,
+    ];
+    const count: Results['length'] = 8;
+    expect(count).toBe(8);
+  });
+});

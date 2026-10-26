@@ -30,6 +30,12 @@ export type {
   PlanComparison,
   OfflineCertificatePayload,
   OfflineLocalVerifyResult,
+  GatewayProvider,
+  GatewayProviderSchema,
+  GatewayConfigTestResult,
+  NotificationTemplateDetail,
+  NotificationDetail,
+  ReleaseDownload,
 } from './models/contracts.js';
 export type { WebhookEventEnvelope as VerifiedWebhookEventEnvelope } from './models/contracts.js';
 export { CollectionService, ResourceService, collectAll } from './services/base.js';

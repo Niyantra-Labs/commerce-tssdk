@@ -201,7 +201,8 @@
   "source": "internal/domain/release/handler.go:handleChecksum",
   "body": "none",
   "status": 200,
-  "envelope": "data"
+  "envelope": "data",
+  "public": true
  },
  "GET /api/v1/audit-logs": {
   "source": "internal/domain/audit/handler.go:handleList",
@@ -277,7 +278,8 @@
   "source": "internal/domain/release/handler.go:handleDownload",
   "body": "none",
   "status": 200,
-  "envelope": "raw"
+  "envelope": "raw",
+  "public": true
  },
  "GET /api/v1/entitlements": {
   "source": "internal/domain/entitlement/handler.go:handleList",
@@ -552,7 +554,8 @@
  "GET /api/v1/signing-key": {
   "source": "internal/server/server.go:inline",
   "status": 200,
-  "envelope": "direct"
+  "envelope": "direct",
+  "public": true
  },
  "GET /api/v1/subscriptions": {
   "source": "internal/domain/subscription/handler.go:handleList",
@@ -720,13 +723,15 @@
   "source": "internal/domain/activation/handler.go:handleActivate",
   "body": "required",
   "status": 201,
-  "envelope": "data"
+  "envelope": "data",
+  "public": true
  },
  "POST /api/v1/activations/deactivate": {
   "source": "internal/domain/activation/handler.go:handleDeactivate",
   "body": "required",
   "status": 200,
-  "envelope": "status"
+  "envelope": "status",
+  "public": true
  },
  "POST /api/v1/activations/{id}/deactivate": {
   "source": "internal/domain/activation/handler.go:handleDeactivateByID",
@@ -822,13 +827,15 @@
   "source": "internal/domain/appnotification/handler.go:handleFeed",
   "body": "required",
   "status": 200,
-  "envelope": "data"
+  "envelope": "data",
+  "public": true
  },
  "POST /api/v1/application-notifications/{id}/ack": {
   "source": "internal/domain/appnotification/handler.go:handleAcknowledge",
   "body": "required",
   "status": 200,
-  "envelope": "data"
+  "envelope": "data",
+  "public": true
  },
  "POST /api/v1/applications": {
   "source": "internal/domain/application/handler.go:handleCreate",
@@ -888,7 +895,8 @@
   "source": "internal/domain/release/handler.go:handleAuthorizeDownload",
   "body": "required",
   "status": 200,
-  "envelope": "data"
+  "envelope": "data",
+  "public": true
  },
  "POST /api/v1/entitlements": {
   "source": "internal/domain/entitlement/handler.go:handleCreate",
@@ -946,7 +954,8 @@
    422
   ],
   "status": 200,
-  "envelope": "data"
+  "envelope": "data",
+  "public": true
  },
  "POST /api/v1/licenses/{id}/addons/purchase": {
   "source": "internal/domain/addon/handler.go:handlePurchase",
@@ -1012,7 +1021,8 @@
   "source": "internal/domain/notification/handler.go:handleSESWebhook",
   "body": "required",
   "status": 200,
-  "envelope": "status"
+  "envelope": "status",
+  "public": true
  },
  "POST /api/v1/notifications/{id}/retry": {
   "source": "internal/domain/notification/handler.go:handleNotificationRetry",
@@ -1034,7 +1044,8 @@
    422
   ],
   "status": 200,
-  "envelope": "data"
+  "envelope": "data",
+  "public": true
  },
  "POST /api/v1/offline-certificates/{id}/approve": {
   "source": "internal/domain/offline/handler.go:handleApprove",
@@ -1267,6 +1278,7 @@
  "POST /api/v1/webhooks/{provider}": {
   "source": "internal/gateway/webhookhandler.go:handleWebhook",
   "body": "required",
-  "envelope": "unknown"
+  "envelope": "unknown",
+  "public": true
  }
 }
