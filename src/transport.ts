@@ -149,6 +149,17 @@ function withAbort<T>(value: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
+/** Whether an error's message, stack, or nested cause text contains secret. */
+function mentions(error: unknown, secret: string | undefined): boolean {
+  if (!secret) return false;
+  for (let e: unknown = error, depth = 0; e != null && depth < 5; depth++) {
+    const text = e instanceof Error ? `${e.message}\n${e.stack ?? ''}` : String(e);
+    if (text.includes(secret)) return true;
+    e = e instanceof Error ? e.cause : undefined;
+  }
+  return false;
+}
+
 async function readLimited(response: Response, maxBytes: number): Promise<string> {
   const length = response.headers.get('content-length');
   if (length && Number(length) > maxBytes) {
@@ -361,14 +372,16 @@ export class Transport {
             signal: controller.signal,
             redirect: 'manual',
           });
-        } catch {
+        } catch (cause) {
           if (controller.signal.aborted) throw controller.signal.reason;
           if (retryable && attempt < this.maxRetries) {
             await wait(Math.random() * Math.min(500 * 2 ** attempt, 5000), controller.signal);
             continue;
           }
+          // Keep the fetch error for diagnosis (DNS, refused connection, TLS)
+          // unless it could echo the credential, as a custom fetch might.
           throw new CommerceNetworkError('Network request failed', {
-            cause: new Error('Fetch failed'),
+            cause: mentions(cause, credential) ? new Error('Fetch failed') : cause,
           });
         }
         if (

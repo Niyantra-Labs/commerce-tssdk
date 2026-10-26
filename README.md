@@ -37,6 +37,8 @@ Failures reject with a typed error: `CommerceApiError` (HTTP error with `status`
 
 GET requests retry 429/502/503/504 and network failures with bounded jittered backoff, honouring `Retry-After`. Mutations are never retried automatically. A timeout or the caller's `AbortSignal` cancels the request, any backoff, and — for streamed downloads — the body while it is being read. `asResult(promise)` turns a call into a `{ ok, value | error }` result for code that prefers not to throw.
 
+For exact JSON, PATCH, integer, response-envelope, and retry rules, see [Wire semantics](doc/wire-semantics.md).
+
 ## Pagination
 
 `list()` returns one `{ data, total }` page. `listAll()` iterates lazily across pages with the same filters and fails if the server's totals become inconsistent; `collectAll(iterable, cap)` gathers results with an explicit upper bound. List filters are exactly the ones each server handler reads.

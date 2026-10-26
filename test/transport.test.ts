@@ -4,6 +4,7 @@ import {
   collectAll,
   CommerceAbortError,
   CommerceApiError,
+  CommerceNetworkError,
   CommerceProtocolError,
   CommerceTimeoutError,
   CommerceValidationError,
@@ -289,5 +290,39 @@ describe('fetch binding', () => {
     const client = new Client({ auth: { apiKey: 'secret' }, fetch: fetcher });
     await client.system.health();
     expect(receivers).toEqual([undefined]);
+  });
+});
+
+describe('network error causes', () => {
+  it('keeps the underlying fetch error for diagnosis when it does not mention the credential', async () => {
+    const refused = new TypeError('fetch failed', { cause: new Error('connect ECONNREFUSED') });
+    const client = new Client({
+      auth: { apiKey: 'sk_secret_value' },
+      maxRetries: 0,
+      fetch: () => Promise.reject(refused),
+    });
+    const error = (await client.system.signingKey().catch((e: unknown) => e)) as Error;
+    expect(error).toBeInstanceOf(CommerceNetworkError);
+    expect(error.cause).toBe(refused);
+  });
+});
+
+describe('base URL', () => {
+  it('keeps an intended base path in front of /api/v1', async () => {
+    const urls: string[] = [];
+    const client = new Client({
+      baseUrl: 'https://gateway.example.test/commerce/',
+      auth: { apiKey: 'secret' },
+      fetch: async (url) => {
+        urls.push(String(url));
+        return new Response(JSON.stringify({ data: [], total: 0 }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      },
+    });
+    await client.products.list();
+    await client.system.health();
+    expect(urls[0]).toBe('https://gateway.example.test/commerce/api/v1/products');
+    expect(urls[1]).toBe('https://gateway.example.test/commerce/health');
   });
 });
