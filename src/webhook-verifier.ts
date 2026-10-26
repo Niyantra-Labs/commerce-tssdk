@@ -77,13 +77,15 @@ export class WebhookVerifier {
     let event: unknown;
     try {
       event = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    } catch (cause) {
-      throw new CommerceCryptoError('Invalid webhook JSON', { cause });
+    } catch {
+      // SyntaxError text can quote signed payload bytes, including license keys.
+      throw new CommerceCryptoError('Invalid webhook JSON');
     }
     if (
       !event ||
       typeof event !== 'object' ||
       typeof (event as { id?: unknown }).id !== 'string' ||
+      !(event as { id: string }).id ||
       typeof (event as { type?: unknown }).type !== 'string'
     ) {
       throw new CommerceCryptoError('Invalid webhook event envelope');

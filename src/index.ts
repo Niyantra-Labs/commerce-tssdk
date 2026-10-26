@@ -47,6 +47,8 @@ export { CollectionService, ResourceService, collectAll } from './services/base.
 export * from './services/index.js';
 export { UsageReporter } from './usage-reporter.js';
 export { WebhookVerifier } from './webhook-verifier.js';
+export { defineWebhookHandler } from './webhook-handler.js';
+export type { WebhookDedupe, WebhookHandlerMap, WebhookHandlerOptions } from './webhook-handler.js';
 export * from './webhook-events.js';
 export type { HeaderSource } from './webhook-verifier.js';
 export { OfflineVerifier } from './offline-verifier.js';

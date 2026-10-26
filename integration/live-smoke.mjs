@@ -7,7 +7,13 @@ import process from 'node:process';
 import { clearTimeout, setTimeout } from 'node:timers';
 import { URL } from 'node:url';
 import { TextEncoder } from 'node:util';
-import { Client, isKnownWebhookEvent, OfflineVerifier, WebhookVerifier } from '../dist/index.js';
+import {
+  Client,
+  defineWebhookHandler,
+  isKnownWebhookEvent,
+  OfflineVerifier,
+  WebhookVerifier,
+} from '../dist/index.js';
 
 const baseUrl = process.env.COMMERCE_TEST_URL ?? 'http://127.0.0.1:19094';
 const suffix = randomUUID().slice(0, 12);
@@ -425,9 +431,35 @@ async function typedWebhookEvents({ api, organization, customer }) {
   const started = await verify('subscription.created');
   assert.equal(started.data.subscription.id, subscription.id);
   assert.equal(started.data.subscription.plan_id, plan.id);
+  const seen = new Set();
+  const handled = [];
+  const handle = defineWebhookHandler({
+    secret: endpoint.secret,
+    dedupe: {
+      async runOnce(eventId, callback) {
+        if (seen.has(eventId)) return false;
+        await callback();
+        seen.add(eventId);
+        return true;
+      },
+    },
+    handlers: { 'license.issued': (event) => handled.push(event.data.license.id) },
+  });
+  const recorded = received.get('license.issued');
+  assert.ok(recorded);
+  const replay = () =>
+    new globalThis.Request('http://localhost/webhook', {
+      method: 'POST',
+      headers: recorded.headers,
+      body: recorded.body,
+    });
+  assert.equal((await handle(replay())).status, 204);
+  assert.equal((await handle(replay())).status, 204);
+  assert.deepEqual(handled, [license.id]);
   passed(
     'typed webhook events (real license.issued and subscription.created deliveries narrow to their payloads)',
   );
+  passed('framework-neutral webhook handler dispatches a real signed delivery once');
 }
 
 /** API-key scopes: read vs write, usage-only keys, and no minting broader keys. */

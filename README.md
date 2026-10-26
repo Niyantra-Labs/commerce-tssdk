@@ -74,7 +74,23 @@ if (isKnownWebhookEvent(event) && event.type === 'license.issued') {
 
 Events of types a newer server adds are not narrowed; handle or ignore them rather than failing the delivery.
 
-Pass the raw body bytes before any JSON parsing. The verifier checks the `X-Niyantra-*` v1 HMAC signature in constant time and a five-minute timestamp window. Record delivery/event IDs durably to reject replays inside that window.
+Pass the raw body bytes before any JSON parsing. The verifier checks the `X-Niyantra-*` v1 HMAC signature in constant time and a five-minute timestamp window. `defineWebhookHandler` wraps verification and typed dispatch in a framework-neutral `Request` → `Response` function:
+
+```ts
+import { defineWebhookHandler } from '@niyantra/commerce';
+
+const handle = defineWebhookHandler({
+  secrets: [currentSecret, previousSecret],
+  handlers: {
+    'license.issued': async (event) => recordLicense(event.data.license),
+    '*': async (event) => recordUnknownEvent(event.id, event.type),
+  },
+  dedupe: durableStore,
+});
+const response = await handle(request);
+```
+
+`durableStore.runOnce(eventId, callback)` must atomically claim the signed event ID, run the callback at most once, and release the claim if it fails. Keep claims longer than the five-minute signature window; an in-memory set does not protect across restarts or replicas. The handler returns 204 for handled or duplicate events, 401 for invalid signatures, and 500 for callback failures so Commerce can retry. An unhandled valid event also returns 204. Store and callbacks should be idempotent if effects and claim persistence cannot share one transaction.
 
 ## Offline certificates
 
