@@ -2,7 +2,7 @@
 
 A dependency-free ESM TypeScript client for the Niyantra Commerce HTTP API: licensing, activations, offline certificates, subscriptions, usage metering, orders and invoices, webhooks, referrals and affiliates, payment gateways, notifications, and binary releases.
 
-This package is under Phase 1 development and is **not published**. Every method is contract-tested against the Commerce route handlers and exercised against a live Commerce server (Commerce `30286a8`). See [spec/todo.md](spec/todo.md) for what remains before a release.
+This package is under Phase 1 development and is **not published**. Every method is contract-tested against the Commerce route handlers; the live smoke exercises representative workflows against a Commerce server (Commerce `30286a8`). See [spec/todo.md](spec/todo.md) for what remains before a release.
 
 ## Quick start
 
@@ -140,7 +140,7 @@ In browsers, use a short-lived bearer token, never an API key. Usage reporting c
 | `npm run test:runtimes`    | The runtime matrix above against the live server                                                                                                                 |
 | `npm run test:package`     | The packed tarball installed into a fresh project: contents, ESM import, CommonJS `require`, and strict TypeScript consumers (`nodenext` and `bundler`)          |
 
-`npm run coverage` reports V8 source coverage and enforces aggregate thresholds; CI runs it on Node 24. Release policy and the manual dry-run workflow are documented in [Release process](doc/release.md), and release notes are in the [Changelog](CHANGELOG.md).
+`npm run coverage` reports V8 source coverage and enforces aggregate thresholds; CI runs it across its Node and OS matrix. Release policy and the manual dry-run workflow are documented in [Release process](doc/release.md), and release notes are in the [Changelog](CHANGELOG.md).
 
 Start the live server with `docker compose -f integration/compose.yml up -d --build` from this repository (it builds the adjacent `commerce` checkout and binds only `127.0.0.1:19094`); stop it with `docker compose -f integration/compose.yml down`. The [developer guide](doc/developer-guide.md) covers the test layers and the request pipeline.
 

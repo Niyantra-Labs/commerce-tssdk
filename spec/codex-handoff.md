@@ -1,53 +1,45 @@
-# Codex handoff — `codex/observability`
+# Codex handoff — `codex/next`
 
-Worktree: `../commerce-tssdk-codex`. This branch has not been merged, rebased, pushed, or published.
+SDK worktree: `/Users/tirumalrao/workspace/niyantra/commerce-tssdk-next`. The branch was not merged, rebased, pushed, or published. No Commerce server or Go SDK files changed; no server worktree was needed.
 
-## Commits
+## Commits and reasons
 
-- `b1555e2` **Add redacted transport hooks and runtime identification**: adds frozen attempt events, an SDK User-Agent only in permitted runtimes, and a version synchronization test. Exports hook types from `src/index.ts` and documents ordering in `doc/wire-semantics.md`.
-- `30ab5c2` **Verify webhook signatures across rotating secrets**: accepts a single secret or an ordered list and checks every secret without early exit, preserving the single-secret constructor and `v1` requirement.
-- `97084dd` **Measure source coverage in the Node 24 CI leg**: pins `vitest` and `@vitest/coverage-v8` to 4.1.11, adds `npm run coverage`, V8 thresholds, and a Node 24 CI step. Version 4.1.11 was published 2026-08-18; 4.1.12 was published 2026-10-15 and did not meet the 14-day rule on 2026-10-26.
-- `dde088d` **Document version policy and add gated release dry run**: adds `CHANGELOG.md`, `doc/release.md`, and a manual-only release workflow. The workflow runs local, contract, live, runtime, and package gates, previews the packed artifact with `npm publish --dry-run --provenance`, and conditionally publishes only when `dry_run` is false and `NPM_TOKEN` exists. The temporary preview copy has its private flag removed; the repository package stays private.
-- The final handoff commit adds this report.
+1. `ff0973f` Reconcile stale checklist claims against current tests — credited existing hooks, request IDs, typed events, package checks, and coverage only where evidence existed.
+2. `182445f` Harden status handling, rate fairness, and secret-safe inspection — covered 202/204/empty success, final 429/5xx preservation, FIFO cancellable rate waits, and redacted debug/error views.
+3. `4b709e2` Document namespace scopes and close evidenced P0 items — mapped namespace auth/scope, error, and retry rules from the server guard.
+4. `1504b7e` Enforce strict type-aware lint on SDK source — applied strict type-checked rules to production source with zero warnings.
+5. `d76e606` Gate bundle size and service tree shaking — pinned esbuild and added a 25 KiB gzip budget plus a one-service bundle assertion.
+6. `7c013bf` Add verified webhook dispatch with durable replay hook — added typed Request-to-Response dispatch, an atomic `WebhookDedupe` interface, replay guidance, and a real-delivery smoke.
+7. `592b46d` Add server-derived license format and verified offline cache — checked generated-key shape and re-verified signed certificates before storing and on read.
+8. `e9d6e9c` Track exported API report and compile-time type contracts — pinned API Extractor, `ajv`, and `expect-type`; committed the declaration report and type assertions.
+9. `253a8d1` Redact offline verification debug views and document crypto review — shared redacted JSON/inspect views, removed parser causes that could quote secrets, and compared HMAC/Ed25519 logic with Go source.
+10. `a27029f` Reject invalid verification clocks before signature window checks — prevented NaN clocks from bypassing webhook tolerance and offline expiry checks.
+11. `2c52029` Run portable quality gates and dependency scans in CI — added Ubuntu/macOS/Windows jobs, made package checks independent of Unix `tar`, and added an npm audit job.
+12. `1fc8b3e` Document contributor workflow and reconciled quality evidence — added CONTRIBUTING, TSDoc examples, release/CI links, and evidence-based checklist updates.
+13. The final handoff commit records this report and corrects additional stale checklist text.
 
-## Bugs and user-visible changes
+## Bugs, tests, and user-visible behavior
 
-No pre-existing transport or verifier bug was found. Tests establish the new behavior: `emits frozen redacted events for each HTTP attempt and retry`, `ignores a throwing or rejecting hook and returns a raw response`, `emits onRequest before a caller aborts fetch and before a fetch timeout`, `sets User-Agent for node/bun/deno/workerd`, `does not add User-Agent or another identification header in browsers`, and `accepts a previous secret during rotation and rejects it after removal`.
+- A no-body response kind now accepts empty 202/204 success (`test/edge-pipeline.test.ts`: “accepts 202 with no-body response kind” and “accepts 204 with no-body response kind”). A 202 with a valid `data` envelope decodes normally; an empty typed success rejects as `CommerceProtocolError` (“decodes a 202 data response and rejects empty typed success”).
+- A final 429/503 remains a `CommerceApiError` with its status/code after safe GET retries run out (`test/edge-pipeline.test.ts`: “retains the final HTTP 429 envelope after GET retries” and the 503 case). Mutations and multipart remain single-attempt.
+- Client rate-limit waits are FIFO, bounded, and cancellable under an injected clock (`test/edge-pipeline.test.ts`: “serves queued requests in arrival order and releases an aborted turn”). The clock is an optional advanced `ClientOptions.rateLimit.clock` field.
+- HTTP and offline results keep explicit secret field access while JSON/Node inspection redact those fields. API errors redact credentials and secret input values. Invalid signed JSON has no parser cause that could quote a license key (`test/edge-redaction.test.ts`, `test/offline-certificate-cache.test.ts`, `test/webhook-handler.test.ts`). `CommerceNetworkError` still preserves the underlying fetch cause unless it mentions an active secret.
+- `defineWebhookHandler` verifies raw bytes, routes known typed events, accepts rotated secrets, returns 204 for handled/duplicate/unhandled valid events, 401 for invalid signatures, 405 for non-POST, and 500 when handling fails. Its dedupe store must atomically claim signed `event.id` and roll back failed callbacks. The live smoke replayed a real `license.issued` delivery through the handler and observed one dispatch.
+- `OfflineCertificateCache` accepts async pluggable storage and re-verifies signature, fingerprint, and expiry on each read. Its memory adapter is volatile. `isGeneratedLicenseKeyFormat` checks shape only; it cannot establish validity. Both used live server-issued values.
+- Invalid caller clocks now reject in both verifiers (`test/webhook.test.ts`: “rejects a non-finite verification clock”; `test/offline-verifier.test.ts`: “rejects an invalid caller clock before checking expiry”).
 
-`ClientOptions.hooks` now accepts `onRequest`, `onResponse`, and `onRetry`. Events carry safe metadata only, with one-based attempt numbers and collection-level paths; callbacks run synchronously after serialization and authentication, are never awaited, and cannot fail the request. Node/Bun/Deno/workerd requests now include `User-Agent: niyantra-commerce-ts/0.1.0 (<runtime>)`; browser requests add no identification header. Custom `User-Agent` overrides are rejected. `WebhookVerifier` now accepts `string | readonly string[]` (current secret first), rejects empty lists/secrets, and verifies against all configured secrets while requiring `v1`. The reviewed `CommerceNetworkError` cause behavior was preserved.
+## Checklist and deployment notes
 
-## Exact edits for Claude-owned files
+`spec/todo.md` now credits §3.3 webhook handler, CONTRIBUTING, and type tests; §3.4 generated-key format and webhook routing; §4.1 dependency scanning; §4.3 zero-warning lint, bundle budget, API report, and crypto review; and §5.2 tree shaking. It marks storage adapters, Codecov upload, cross-platform runner proof, and method-level TSDoc examples partial. Corrective §B/§C/§F items were updated only after their tests. Remaining live workflow gaps are order create/checkout/fulfill, payment/refund, and invoice lifecycle; gateway provider connectivity was deliberately not sent to a third party.
 
-Add this paragraph to `README.md` after **Errors, retries, and cancellation**:
+No server migrations or environment changes are needed for the SDK changes. The opt-in live CI job still needs `RUN_LIVE_CONTRACT=true` and `COMMERCE_REPO_TOKEN`. Codecov stays disabled until a maintainer configures `CODECOV_TOKEN` and adds a pinned upload step. `package.json` remains `"private": true`; no publishing was attempted. The package stays ESM-only with zero runtime dependencies.
 
-> Optional `hooks` on `new Client()` accepts `onRequest`, `onResponse`, and `onRetry` callbacks. Each receives a frozen event with method, collection-level path, attempt number, elapsed milliseconds, and request ID when available; response events add status, and retry events add delay and reason. Events contain no headers, bodies, query values, or credentials. Callbacks run synchronously after serialization and authentication, must be fast, and cannot change or fail a request; returned promises are not awaited. With no hooks, the SDK remains silent. See [Wire semantics](doc/wire-semantics.md#identification-and-observability).
-
-Add this sentence under `README.md` **Runtime support**:
-
-> Node, Bun, Deno, and workerd requests send `User-Agent: niyantra-commerce-ts/<version> (<runtime>)`; browser requests omit it and add no replacement header, so this feature creates no new CORS preflight requirement.
-
-Add this sentence under `README.md` **Webhooks**:
-
-> For secret rotation, construct `new WebhookVerifier([currentSecret, previousSecret])`, then remove the previous secret after the overlap period. Every configured secret is checked, and deliveries still require signature version `v1`.
-
-Add this sentence under `README.md` **Testing**:
-
-> `npm run coverage` reports V8 source coverage and enforces aggregate thresholds; CI runs it on Node 24. Release policy and the manual dry-run workflow are documented in [Release process](doc/release.md), and release notes are in the [Changelog](CHANGELOG.md).
-
-In `spec/todo.md` §1.3, replace the two open lines with:
-
-> - [x] Default SDK identification only in runtimes where the header is permitted; browsers cannot set `User-Agent` — Node/Bun/Deno/workerd use `niyantra-commerce-ts/<version> (<runtime>)`; browser omits it; version is test-checked against package.json.
-> - [x] Debug hook — optional `onRequest` / `onResponse` / `onRetry` callbacks with frozen, redacted attempt metadata; callback failures are swallowed and default logging stays silent.
-
-In §F, replace “multi-secret rotation is not supported yet” at the end of the webhook verifier bullet with “ordered multi-secret rotation is implemented; current and previous secrets are each checked, and `v1` remains required”. The rest of that bullet can remain partially checked until Claude reviews replay guidance and typed payloads.
-
-In §G, mark the opt-in observability bullet `[x]` and append “— frozen redacted metadata hooks run after serialization/auth and before fetch, with response and retry events; no request mutation or default logger.”
-
-In §4.1, keep “Test coverage reporting via `@vitest/coverage-v8` → codecov” open because Codecov upload was not requested or added. Append “— V8 coverage and aggregate thresholds run on the Node 24 CI leg; Codecov upload remains open.” In §4.2, keep changesets, autogenerated changelog, tagged publishing, and published-package items open. Add a note: “Manual-only release dry-run workflow, 0.x semver policy, and a hand-maintained Keep a Changelog file are in place; `private: true` still blocks a real publish.”
+The fingerprint helper was skipped because Commerce treats the fingerprint as an opaque client-supplied string and has no server generation algorithm. The proration calculator was skipped because `internal/domain/subscription/billing.go` has internal arithmetic but no stable public preview contract or cross-language rounding fixture; server `change-plan`/`seats` results remain authoritative. Separate framework packages, CLI, OpenAPI codegen, gRPC, GraphQL, SSE, and multi-region work stayed out of scope. Changesets were not added because the hand-maintained changelog and private/manual release flow have no publish path to wire them into.
 
 ## Verification and limits
 
-- Passed: clean `npm ci`; `npm run build`; `npm run typecheck`; `npm run lint`; `npm run fmt:check`; `npm test` (288 tests); `npm run docs`; `npm run test:package` (39-file tarball, ESM/CommonJS/TypeScript consumer checks); `npm run coverage`; `npm audit --omit=dev` (zero vulnerabilities); `npm pack --dry-run --json` plus allowed-path assertion (39 files, none unexpected); `git diff --check`; and actionlint v1.7.12 on both workflows.
-- Measured aggregate coverage: **92.05% statements (579/629), 86.65% branches (357/412), 98.38% functions (244/248), 93.83% lines (533/568)**. Configured thresholds: 90%, 84%, 96%, and 91% respectively.
-- Verified action pins with `git ls-remote`: `actions/checkout` v4.2.2 → `11bd71901bbe5b1630ceea73d27597364c9af683`; `actions/setup-node` v4.4.0 → `49933ea5288caeca8642d1e84afbd3f7d6820020`; `oven-sh/setup-bun` v2.2.0 → `0c5077e51419868618aeaa5fe8019c62421857d6`; `denoland/setup-deno` v2.0.5 → `22d081ff2d3a40755e97629de92e3bcbfa7cf2ed`.
-- Neither workflow has run on GitHub. Contract/live/runtime smokes and the release workflow's npm dry-run were not run here. No `npm publish` command was run. The shared stack was not touched or queried. `private: true` remains in `package.json` and blocks real publishing until a maintainer removes it.
+- The final full local gate passed: build, typecheck, 320 unit/contract tests, lint with zero warnings, fmt:check, docs, contract:check, package smoke (51 allowed tarball files and ESM/CommonJS/TypeScript consumers), coverage, bundle check, API report, and `npm audit --omit=dev` (zero vulnerabilities). Latest coverage: **92.39% statements, 86.77% branches, 97.45% functions, 93.87% lines**. Latest bundle: **9,687 gzip bytes full SDK; 678 bytes PlanService only**.
+- The last wire/crypto full gate also passed `npm run test:integration` (**48 live assertions**) and `npm run test:runtimes` (**48 assertions** across Node 20/24, Bun, Deno, Chrome, and workerd). Chrome's signed usage report remains blocked by server CORS because `X-Usage-*` request headers are not allowed; the smoke reports this expected limit.
+- `npm audit --audit-level=high` passed but reported **two moderate Vitest development advisories**, `GHSA-qxg6-89mg-rqv8` and `GHSA-xp26-3454-mjgp`. The available fix did not meet the 14-day pin rule when reviewed. Runtime audit reported zero vulnerabilities.
+- `actionlint` v1.7.7 passed both workflows. `git ls-remote` matched action SHAs to tags: checkout v4.2.2 `11bd71901bbe5b1630ceea73d27597364c9af683`, setup-node v4.4.0 `49933ea5288caeca8642d1e84afbd3f7d6820020`, setup-bun v2.2.0 `0c5077e51419868618aeaa5fe8019c62421857d6`, setup-deno v2.0.5 `22d081ff2d3a40755e97629de92e3bcbfa7cf2ed`.
+- GitHub Actions did not run here. macOS, Windows, and Node 22 legs remain unverified on their actual runners. The manual release workflow and Codecov upload were not run. No `npm publish` command was run. No Go build/test was needed because no server files changed.
