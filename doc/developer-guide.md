@@ -48,6 +48,10 @@ Implementation rules learned the hard way:
 
 GET requests alone retry 429/502/503/504 and network failures, with bounded full-jitter backoff and `Retry-After`. Multipart and other mutations are never repeated automatically; the server does not yet honour idempotency keys outside usage reports.
 
+The optional `rateLimit` is per Client, FIFO, and cancellable. It budgets each fetch attempt, including retries; `rateLimit.clock` supplies an injectable `now`/`sleep` pair for deterministic tests. The server's rate limit remains independent. Every namespace's auth/scope and error behavior is in [Namespace semantics](namespace-semantics.md).
+
+For a Node-only proxy or keep-alive policy, inject a wrapped fetch and own its dispatcher lifecycle. For example, an application that already depends on Undici can construct a `ProxyAgent` (or `Agent` for connection pooling) and pass `fetch: (input, init) => fetch(input, { ...init, dispatcher } as RequestInit)` to `Client`. The SDK invokes that function unbound and does not ship an agent or a Node dependency. Close the dispatcher when the application shuts down.
+
 ## Cryptography
 
 - **Usage reports**: RFC3339 timestamp; HMAC-SHA256 keyed by the raw API key over `timestamp + "\n" + "POST" + "\n" + "/api/v1/usage/reports" + "\n" + hex(SHA256(body))`; the body is serialized once and sent byte-for-byte after signing; 1–100 reports, 2 MiB.

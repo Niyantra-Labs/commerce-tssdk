@@ -45,6 +45,8 @@ Optional `hooks` on `new Client()` accepts `onRequest`, `onResponse`, and `onRet
 
 `list()` returns one `{ data, total }` page. `listAll()` iterates lazily across pages with the same filters and fails if the server's totals become inconsistent; `collectAll(iterable, cap)` gathers results with an explicit upper bound. List filters are exactly the ones each server handler reads.
 
+For each namespace's authentication, API-key scope, errors, and retry behavior, see [Namespace semantics](doc/namespace-semantics.md).
+
 ## Usage reporting
 
 `client.usageReporter.report(reports)` and `reportSingle(report)` HMAC-sign the exact JSON body with the API key using the server's canonical string and send it once. Each report needs a stable `idempotency_key`; the server deduplicates on it. The key needs the `usage:report` scope, and the server must have a usage meter for the `feature_key`.
