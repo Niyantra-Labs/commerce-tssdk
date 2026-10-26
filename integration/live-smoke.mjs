@@ -7,9 +7,7 @@ import process from 'node:process';
 import { clearTimeout, setTimeout } from 'node:timers';
 import { URL } from 'node:url';
 import { TextEncoder } from 'node:util';
-import { Client, OfflineVerifier, WebhookVerifier } from '../dist/index.js';
-// Not exported from the package root until the codex/observability merge.
-import { isKnownWebhookEvent } from '../dist/webhook-events.js';
+import { Client, isKnownWebhookEvent, OfflineVerifier, WebhookVerifier } from '../dist/index.js';
 
 const baseUrl = process.env.COMMERCE_TEST_URL ?? 'http://127.0.0.1:19094';
 const suffix = randomUUID().slice(0, 12);

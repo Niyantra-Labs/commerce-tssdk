@@ -39,6 +39,8 @@ GET requests retry 429/502/503/504 and network failures with bounded jittered ba
 
 For exact JSON, PATCH, integer, response-envelope, and retry rules, see [Wire semantics](doc/wire-semantics.md).
 
+Optional `hooks` on `new Client()` accepts `onRequest`, `onResponse`, and `onRetry` callbacks. Each receives a frozen event with method, collection-level path, attempt number, elapsed milliseconds, and request ID when available; response events add status, and retry events add delay and reason. Events contain no headers, bodies, query values, or credentials. Callbacks run synchronously after serialization and authentication, must be fast, and cannot change or fail a request; returned promises are not awaited. With no hooks, the SDK remains silent. See [Wire semantics](doc/wire-semantics.md#identification-and-observability).
+
 ## Pagination
 
 `list()` returns one `{ data, total }` page. `listAll()` iterates lazily across pages with the same filters and fails if the server's totals become inconsistent; `collectAll(iterable, cap)` gathers results with an explicit upper bound. List filters are exactly the ones each server handler reads.
@@ -55,6 +57,20 @@ import { WebhookVerifier } from '@niyantra/commerce';
 const verifier = new WebhookVerifier(process.env.COMMERCE_WEBHOOK_SECRET!);
 const event = await verifier.verify(request.headers, new Uint8Array(await request.arrayBuffer()));
 ```
+
+For secret rotation, construct `new WebhookVerifier([currentSecret, previousSecret])`, then remove the previous secret after the overlap period. Every configured secret is checked, and deliveries still require signature version `v1`.
+
+Verified events can be narrowed to typed payloads for the event types the server publishes:
+
+```ts
+import { isKnownWebhookEvent } from '@niyantra/commerce';
+
+if (isKnownWebhookEvent(event) && event.type === 'license.issued') {
+  console.log(event.data.license.license_key);
+}
+```
+
+Events of types a newer server adds are not narrowed; handle or ignore them rather than failing the delivery.
 
 Pass the raw body bytes before any JSON parsing. The verifier checks the `X-Niyantra-*` v1 HMAC signature in constant time and a five-minute timestamp window. Record delivery/event IDs durably to reject replays inside that window.
 
@@ -84,6 +100,8 @@ The built package uses only `fetch`, `AbortController`, and Web Crypto — no No
 | Cloudflare Workers | workerd 1.20260730 (Miniflare) |                                                |
 | Browsers           | Chrome 155                     | cross-origin; see below                        |
 
+Node, Bun, Deno, and workerd requests send `User-Agent: niyantra-commerce-ts/<version> (<runtime>)`; browser requests omit it and add no replacement header, so this feature creates no new CORS preflight requirement.
+
 In browsers, use a short-lived bearer token, never an API key. Usage reporting cannot run in a browser because the server's CORS policy does not allow the `X-Usage-*` signature headers. The server exposes `X-Request-ID`, `Retry-After`, `Content-Disposition`, and `X-Checksum-SHA256` to browser code, so errors carry request IDs there too. The package is ESM-only; CommonJS code can `require()` it on Node 20.19+ or 22.12+ (Node's require(esm)). Firefox, Safari, and Vercel Edge have not been tested yet.
 
 ## Testing
@@ -95,6 +113,8 @@ In browsers, use a short-lived bearer token, never an API key. Usage reporting c
 | `npm run test:integration` | The SDK against a live Commerce server, including cross-tenant isolation                                                                                         |
 | `npm run test:runtimes`    | The runtime matrix above against the live server                                                                                                                 |
 | `npm run test:package`     | The packed tarball installed into a fresh project: contents, ESM import, CommonJS `require`, and strict TypeScript consumers (`nodenext` and `bundler`)          |
+
+`npm run coverage` reports V8 source coverage and enforces aggregate thresholds; CI runs it on Node 24. Release policy and the manual dry-run workflow are documented in [Release process](doc/release.md), and release notes are in the [Changelog](CHANGELOG.md).
 
 Start the live server with `docker compose -f integration/compose.yml up -d --build` from this repository (it builds the adjacent `commerce` checkout and binds only `127.0.0.1:19094`); stop it with `docker compose -f integration/compose.yml down`. The [developer guide](doc/developer-guide.md) covers the test layers and the request pipeline.
 

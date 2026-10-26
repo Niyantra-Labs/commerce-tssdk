@@ -5,7 +5,7 @@ import {
   isKnownWebhookEvent,
   KNOWN_WEBHOOK_EVENT_TYPES,
   type WebhookEventBase,
-} from '../src/webhook-events.js';
+} from '../src/index.js';
 
 const envelope = (type: string, data: unknown): WebhookEventBase => ({
   id: 'evt_1',
