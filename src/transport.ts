@@ -6,6 +6,63 @@ import {
   CommerceTimeoutError,
   CommerceValidationError,
 } from './errors.js';
+import { SDK_VERSION } from './utils.js';
+
+/** Metadata supplied to opt-in hooks. Dynamic path segments and query values are omitted. */
+export interface RequestHookEvent {
+  readonly method: RequestSpec['method'];
+  readonly path: string;
+  readonly attempt: number;
+  readonly durationMs: number;
+  readonly requestId?: string;
+}
+
+/** HTTP response metadata, emitted once per received response, including retried responses. */
+export interface ResponseHookEvent extends RequestHookEvent {
+  readonly status: number;
+}
+
+/** Retry metadata, emitted before the cancellable backoff. */
+export interface RetryHookEvent extends RequestHookEvent {
+  readonly reason: string;
+  readonly delayMs: number;
+}
+
+export interface TransportHooks {
+  onRequest?: (event: Readonly<RequestHookEvent>) => void | Promise<void>;
+  onResponse?: (event: Readonly<ResponseHookEvent>) => void | Promise<void>;
+  onRetry?: (event: Readonly<RetryHookEvent>) => void | Promise<void>;
+}
+
+function emitHook<T>(
+  hook: ((event: Readonly<T>) => void | Promise<void>) | undefined,
+  event: T,
+): void {
+  if (!hook) return;
+  try {
+    const result = hook(Object.freeze(event));
+    if (result) Promise.resolve(result).catch(() => undefined);
+  } catch {
+    // Instrumentation must never change request behavior.
+  }
+}
+
+function sdkRuntime(): 'node' | 'bun' | 'deno' | 'workerd' | undefined {
+  const globals = globalThis as typeof globalThis & {
+    window?: unknown;
+    document?: unknown;
+    Bun?: unknown;
+    Deno?: unknown;
+    WebSocketPair?: unknown;
+    process?: { versions?: { node?: string } };
+  };
+  if (globals.window && globals.document) return undefined;
+  if (globals.Bun) return 'bun';
+  if (globals.Deno) return 'deno';
+  if (globals.WebSocketPair) return 'workerd';
+  if (globals.process?.versions?.node) return 'node';
+  return undefined;
+}
 
 /** Exactly one credential: an API key (server-side only) or a bearer token, optionally a function returning a fresh token per request. */
 export type Authentication =
@@ -24,6 +81,8 @@ export interface ClientOptions {
   maxRetries?: number;
   /** Optional per-client request budget. */
   rateLimit?: { requestsPerSecond: number; burst?: number };
+  /** Synchronous, best-effort metadata hooks. Keep callbacks fast; returned promises are not awaited. */
+  hooks?: TransportHooks;
   /** All credentials are intended for trusted runtimes. */
   auth: Authentication;
 }
@@ -200,6 +259,7 @@ export class Transport {
   private readonly auth: Authentication;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
+  private readonly hooks: TransportHooks | undefined;
   private readonly rateLimit?: {
     intervalMs: number;
     burst: number;
@@ -241,6 +301,7 @@ export class Transport {
     this.auth = auth;
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.maxRetries = options.maxRetries ?? 2;
+    this.hooks = options.hooks;
     if (options.rateLimit) {
       const { requestsPerSecond, burst = 1 } = options.rateLimit;
       if (
@@ -316,11 +377,25 @@ export class Transport {
       timeout,
     );
     const retryable = !spec.formData && spec.method === 'GET' && spec.retryable !== false;
+    // Only the collection segment is exposed; later segments may be IDs,
+    // license keys, or download tokens. Never expose query values.
+    const hookPath = `${spec.unprefixed ? '' : '/api/v1'}/${spec.path.split('/')[1] ?? ''}`;
+    const hookBase = (attempt: number, started: number, credential?: string) => ({
+      method: spec.method,
+      path: hookPath,
+      attempt,
+      durationMs: Math.max(0, Date.now() - started),
+      ...(options.requestId && options.requestId !== credential
+        ? { requestId: options.requestId }
+        : {}),
+    });
     // A raw (streamed) response outlives this call: keep honouring the
     // caller's signal while the body is read. The timeout covers headers only.
     let streaming = false;
     try {
       const headers = new Headers({ Accept: 'application/json' });
+      const runtime = sdkRuntime();
+      if (runtime) headers.set('User-Agent', `niyantra-commerce-ts/${SDK_VERSION} (${runtime})`);
       let credential: string | undefined;
       if (typeof body === 'string') headers.set('Content-Type', 'application/json');
       if (options.requestId) headers.set('X-Request-ID', options.requestId);
@@ -341,11 +416,12 @@ export class Transport {
         }
       }
       for (const [key, value] of Object.entries(spec.headers ?? {})) {
-        if (/^(authorization|x-api-key|host|content-type)$/i.test(key))
+        if (/^(authorization|x-api-key|host|content-type|user-agent)$/i.test(key))
           throw new CommerceValidationError('Protected header override');
         headers.set(key, value);
       }
       for (let attempt = 0; ; attempt++) {
+        const started = Date.now();
         if (controller.signal.aborted) throw controller.signal.reason;
         if (this.rateLimit) {
           const state = this.rateLimit;
@@ -365,6 +441,7 @@ export class Transport {
         }
         let response: Response;
         try {
+          emitHook(this.hooks?.onRequest, hookBase(attempt + 1, started, credential));
           response = await this.fetcher(url, {
             method: spec.method,
             headers,
@@ -375,7 +452,13 @@ export class Transport {
         } catch (cause) {
           if (controller.signal.aborted) throw controller.signal.reason;
           if (retryable && attempt < this.maxRetries) {
-            await wait(Math.random() * Math.min(500 * 2 ** attempt, 5000), controller.signal);
+            const delay = Math.random() * Math.min(500 * 2 ** attempt, 5000);
+            emitHook(this.hooks?.onRetry, {
+              ...hookBase(attempt + 1, started, credential),
+              reason: 'network',
+              delayMs: delay,
+            });
+            await wait(delay, controller.signal);
             continue;
           }
           // Keep the fetch error for diagnosis (DNS, refused connection, TLS)
@@ -384,6 +467,14 @@ export class Transport {
             cause: mentions(cause, credential) ? new Error('Fetch failed') : cause,
           });
         }
+        emitHook(this.hooks?.onResponse, {
+          ...hookBase(attempt + 1, started, credential),
+          status: response.status,
+          ...(response.headers.get('x-request-id') &&
+          response.headers.get('x-request-id') !== credential
+            ? { requestId: response.headers.get('x-request-id')! }
+            : {}),
+        });
         if (
           retryable &&
           attempt < this.maxRetries &&
@@ -393,6 +484,11 @@ export class Transport {
             parseRetryAfter(response.headers.get('retry-after')) ??
             Math.random() * Math.min(500 * 2 ** attempt, 5000);
           discardBody(response);
+          emitHook(this.hooks?.onRetry, {
+            ...hookBase(attempt + 1, started, credential),
+            reason: `http_${response.status}`,
+            delayMs: delay,
+          });
           await wait(delay, controller.signal);
           continue;
         }

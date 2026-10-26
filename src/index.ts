@@ -6,6 +6,10 @@ export type {
   RequestOptions,
   RequestSpec,
   ResponseKind,
+  RequestHookEvent,
+  ResponseHookEvent,
+  RetryHookEvent,
+  TransportHooks,
 } from './transport.js';
 export * from './errors.js';
 export * from './models/generated.js';

@@ -23,3 +23,11 @@ Non-success HTTP responses raise `CommerceApiError` with status, code, message, 
 Only GET requests retry automatically, for 429/502/503/504 or fetch failures, up to `maxRetries` (default 2). `retryable: false` disables a GET retry; setting it to `true` cannot enable mutation retries. Multipart requests are never retried. Retry delay uses bounded exponential full jitter unless `Retry-After` supplies seconds or an HTTP date; that delay is capped at 30 seconds. The configured timeout is one deadline covering credential resolution, rate-limit waits, fetches, response reads, and retry backoff. The caller's `AbortSignal` cancels all of those stages. A caller cancellation raises `CommerceAbortError`; the deadline raises `CommerceTimeoutError`. For a `raw` response, timeout ends after response headers, while the caller's signal stays connected during body streaming.
 
 Dynamic path IDs are percent-encoded as individual segments. Fetch runs with `redirect: 'manual'`, so credentials are never forwarded by an automatic redirect.
+
+## Identification and observability
+
+In Node, Bun, Deno, and workerd, the transport sends `User-Agent: niyantra-commerce-ts/<version> (<runtime>)`. Browser requests omit it and add no replacement identification header. The version constant in `src/utils.ts` is checked against `package.json` by a test.
+
+`ClientOptions.hooks` is opt-in. `onRequest` runs immediately before each fetch, after serialization, signing, authentication, and the local rate wait. `onResponse` runs once after headers arrive, including responses that will be retried or returned as raw streams. `onRetry` runs before backoff for a retryable HTTP status or network failure. Each callback receives a frozen metadata snapshot with the method, collection-level URL path, attempt number (starting at 1), elapsed milliseconds, and request ID when available; response events add status and retry events add reason and delay. Dynamic path segments, query values, headers, bodies, and credentials are never attached. A response header's `X-Request-ID` takes precedence over the caller-supplied request ID.
+
+Callbacks are invoked synchronously and must be fast. Their returned promises are not awaited; callback throws and rejections are swallowed. Hooks cannot alter the request, signed bytes, retry policy, or response. With no hooks, the SDK emits no diagnostics.
