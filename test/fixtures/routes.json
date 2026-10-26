@@ -1,0 +1,1272 @@
+{
+ "DELETE /api/v1/addons/{id}": {
+  "source": "internal/domain/addon/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/affiliates/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleDeleteAffiliate",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/api-keys/{id}": {
+  "source": "internal/domain/apikey/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/applications/{id}": {
+  "source": "internal/domain/application/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/commission-plans/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleDeleteCommissionPlan",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/contacts/{id}": {
+  "source": "internal/domain/customer/handler.go:handleDeleteContact",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/customers/{id}": {
+  "source": "internal/domain/customer/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/entitlements/{id}": {
+  "source": "internal/domain/entitlement/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/gateway-configs/{id}": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/machines/{id}": {
+  "source": "internal/domain/machine/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/organizations/{id}": {
+  "source": "internal/domain/organization/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/payment-methods/{id}": {
+  "source": "internal/domain/paymentmethod/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/plans/{id}": {
+  "source": "internal/domain/plan/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/products/{id}": {
+  "source": "internal/domain/product/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/referral-programs/{id}": {
+  "source": "internal/domain/referral/handler.go:handleDeleteProgram",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/releases/{id}": {
+  "source": "internal/domain/release/handler.go:handleDelete",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "DELETE /api/v1/usage-meters/{id}": {
+  "source": "internal/domain/usage/handler.go:handleDeleteMeter",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "GET /api/v1/activations": {
+  "source": "internal/domain/activation/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/activations/{id}": {
+  "source": "internal/domain/activation/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/addons": {
+  "source": "internal/domain/addon/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/addons/{id}": {
+  "source": "internal/domain/addon/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/affiliate-events": {
+  "source": "internal/domain/affiliate/handler.go:handleListAffiliateEvents",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/affiliate-events/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleGetAffiliateEvent",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/affiliate-links": {
+  "source": "internal/domain/affiliate/handler.go:handleListAffiliateLinks",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/affiliate-links/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleGetAffiliateLink",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/affiliates": {
+  "source": "internal/domain/affiliate/handler.go:handleListAffiliates",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/affiliates/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleGetAffiliate",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/api-keys": {
+  "source": "internal/domain/apikey/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/api-keys/{id}": {
+  "source": "internal/domain/apikey/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/application-notifications": {
+  "source": "internal/domain/appnotification/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/application-notifications/{id}": {
+  "source": "internal/domain/appnotification/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/applications": {
+  "source": "internal/domain/application/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/applications/{id}": {
+  "source": "internal/domain/application/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/artifacts/{id}/checksum": {
+  "source": "internal/domain/release/handler.go:handleChecksum",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/audit-logs": {
+  "source": "internal/domain/audit/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/audit-logs/export": {
+  "source": "internal/domain/audit/handler.go:handleExport",
+  "body": "none",
+  "status": 200,
+  "envelope": "list",
+  "alternatives": [
+   "list",
+   "raw"
+  ]
+ },
+ "GET /api/v1/audit-logs/{id}": {
+  "source": "internal/domain/audit/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/checkout-options": {
+  "source": "internal/domain/paymentmethod/handler.go:handleCheckoutOptions",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/commission-payouts": {
+  "source": "internal/domain/affiliate/handler.go:handleListPayouts",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/commission-payouts/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleGetPayout",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/commission-plans": {
+  "source": "internal/domain/affiliate/handler.go:handleListCommissionPlans",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/commission-plans/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleGetCommissionPlan",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/customers": {
+  "source": "internal/domain/customer/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/customers/{id}": {
+  "source": "internal/domain/customer/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/customers/{id}/contacts": {
+  "source": "internal/domain/customer/handler.go:handleListContacts",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/downloads/{token}": {
+  "source": "internal/domain/release/handler.go:handleDownload",
+  "body": "none",
+  "status": 200,
+  "envelope": "raw"
+ },
+ "GET /api/v1/entitlements": {
+  "source": "internal/domain/entitlement/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/entitlements/{id}": {
+  "source": "internal/domain/entitlement/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/gateway-configs": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/gateway-configs/{id}": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/gateway-providers": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleListProviders",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/gateway-providers/{provider}/schema": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleProviderSchema",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/gateway-webhook-logs": {
+  "source": "internal/gateway/webhookhandler.go:handleListLogs",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/invoices": {
+  "source": "internal/domain/invoice/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/invoices/{id}": {
+  "source": "internal/domain/invoice/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/invoices/{id}/pdf": {
+  "source": "internal/domain/invoice/handler.go:handlePDF",
+  "body": "none",
+  "status": 200,
+  "envelope": "raw"
+ },
+ "GET /api/v1/licenses": {
+  "source": "internal/domain/license/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/licenses/{id}": {
+  "source": "internal/domain/license/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/licenses/{id}/addons": {
+  "source": "internal/domain/addon/handler.go:handleListForLicense",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/licenses/{id}/features": {
+  "source": "internal/domain/license/handler.go:handleFeatures",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/licenses/{id}/usage": {
+  "source": "internal/domain/usage/handler.go:handleLicenseUsage",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/machines": {
+  "source": "internal/domain/machine/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/machines/{id}": {
+  "source": "internal/domain/machine/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/notification-templates": {
+  "source": "internal/domain/notification/handler.go:handleTemplateList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/notification-templates/{id}": {
+  "source": "internal/domain/notification/handler.go:handleTemplateGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/notifications": {
+  "source": "internal/domain/notification/handler.go:handleNotificationList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/notifications/{id}": {
+  "source": "internal/domain/notification/handler.go:handleNotificationGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/offline-certificates": {
+  "source": "internal/domain/offline/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/offline-certificates/{id}": {
+  "source": "internal/domain/offline/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/orders": {
+  "source": "internal/domain/order/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/orders/{id}": {
+  "source": "internal/domain/order/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/organizations": {
+  "source": "internal/domain/organization/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/organizations/{id}": {
+  "source": "internal/domain/organization/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/payment-methods": {
+  "source": "internal/domain/paymentmethod/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/payment-methods/{id}": {
+  "source": "internal/domain/paymentmethod/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/payments": {
+  "source": "internal/domain/payment/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/payments/{id}": {
+  "source": "internal/domain/payment/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/plans": {
+  "source": "internal/domain/plan/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/plans/compare": {
+  "source": "internal/domain/plan/handler.go:handleCompare",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/plans/{id}": {
+  "source": "internal/domain/plan/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/products": {
+  "source": "internal/domain/product/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/products/{id}": {
+  "source": "internal/domain/product/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/referral-codes": {
+  "source": "internal/domain/referral/handler.go:handleListCodes",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/referral-codes/{id}": {
+  "source": "internal/domain/referral/handler.go:handleGetCode",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/referral-events": {
+  "source": "internal/domain/referral/handler.go:handleListEvents",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/referral-events/{id}": {
+  "source": "internal/domain/referral/handler.go:handleGetEvent",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/referral-programs": {
+  "source": "internal/domain/referral/handler.go:handleListPrograms",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/referral-programs/{id}": {
+  "source": "internal/domain/referral/handler.go:handleGetProgram",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/releases": {
+  "source": "internal/domain/release/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/releases/{id}": {
+  "source": "internal/domain/release/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/releases/{id}/artifacts": {
+  "source": "internal/domain/release/handler.go:handleArtifacts",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/signing-key": {
+  "source": "internal/server/server.go:inline",
+  "status": 200,
+  "envelope": "direct"
+ },
+ "GET /api/v1/subscriptions": {
+  "source": "internal/domain/subscription/handler.go:handleList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/subscriptions/{id}": {
+  "source": "internal/domain/subscription/handler.go:handleGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/usage-meters": {
+  "source": "internal/domain/usage/handler.go:handleListMeters",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/usage-meters/{id}": {
+  "source": "internal/domain/usage/handler.go:handleGetMeter",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/webhook-endpoints": {
+  "source": "internal/domain/webhook/handler.go:handleEndpointList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/webhook-endpoints/{id}": {
+  "source": "internal/domain/webhook/handler.go:handleEndpointGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "GET /api/v1/webhook-events": {
+  "source": "internal/domain/webhook/handler.go:handleEventList",
+  "body": "none",
+  "status": 200,
+  "envelope": "list"
+ },
+ "GET /api/v1/webhook-events/{id}": {
+  "source": "internal/domain/webhook/handler.go:handleEventGet",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/addons/{id}": {
+  "source": "internal/domain/addon/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/affiliate-links/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleUpdateAffiliateLink",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/affiliates/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleUpdateAffiliate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/application-notifications/{id}": {
+  "source": "internal/domain/appnotification/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/applications/{id}": {
+  "source": "internal/domain/application/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/commission-plans/{id}": {
+  "source": "internal/domain/affiliate/handler.go:handleUpdateCommissionPlan",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/customers/{id}": {
+  "source": "internal/domain/customer/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/entitlements/{id}": {
+  "source": "internal/domain/entitlement/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/gateway-configs/{id}": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/machines/{id}": {
+  "source": "internal/domain/machine/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/notification-templates/{id}": {
+  "source": "internal/domain/notification/handler.go:handleTemplateUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/organizations/{id}": {
+  "source": "internal/domain/organization/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/plans/{id}": {
+  "source": "internal/domain/plan/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/products/{id}": {
+  "source": "internal/domain/product/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/referral-programs/{id}": {
+  "source": "internal/domain/referral/handler.go:handleUpdateProgram",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/releases/{id}": {
+  "source": "internal/domain/release/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/subscriptions/{id}": {
+  "source": "internal/domain/subscription/handler.go:handleUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/usage-meters/{id}": {
+  "source": "internal/domain/usage/handler.go:handleUpdateMeter",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "PATCH /api/v1/webhook-endpoints/{id}": {
+  "source": "internal/domain/webhook/handler.go:handleEndpointUpdate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/activations": {
+  "source": "internal/domain/activation/handler.go:handleActivate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/activations/deactivate": {
+  "source": "internal/domain/activation/handler.go:handleDeactivate",
+  "body": "required",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/activations/{id}/deactivate": {
+  "source": "internal/domain/activation/handler.go:handleDeactivateByID",
+  "body": "optional",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/addons": {
+  "source": "internal/domain/addon/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/affiliate-events": {
+  "source": "internal/domain/affiliate/handler.go:handleCreateAffiliateEvent",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/affiliate-events/{id}/review": {
+  "source": "internal/domain/affiliate/handler.go:handleReviewAffiliateEvent",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/affiliate-links": {
+  "source": "internal/domain/affiliate/handler.go:handleCreateAffiliateLink",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/affiliate-links/{id}/disable": {
+  "source": "internal/domain/affiliate/handler.go:handleDisableAffiliateLink",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/affiliates": {
+  "source": "internal/domain/affiliate/handler.go:handleCreateAffiliate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/affiliates/{id}/approve": {
+  "source": "internal/domain/affiliate/handler.go:handleApproveAffiliate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/affiliates/{id}/reject": {
+  "source": "internal/domain/affiliate/handler.go:handleRejectAffiliate",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/affiliates/{id}/suspend": {
+  "source": "internal/domain/affiliate/handler.go:handleSuspendAffiliate",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/affiliates/{id}/terminate": {
+  "source": "internal/domain/affiliate/handler.go:handleTerminateAffiliate",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/api-keys": {
+  "source": "internal/domain/apikey/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/api-keys/{id}/revoke": {
+  "source": "internal/domain/apikey/handler.go:handleRevoke",
+  "body": "optional",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/api-keys/{id}/rotate": {
+  "source": "internal/domain/apikey/handler.go:handleRotate",
+  "body": "none",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/application-notifications": {
+  "source": "internal/domain/appnotification/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/application-notifications/feed": {
+  "source": "internal/domain/appnotification/handler.go:handleFeed",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/application-notifications/{id}/ack": {
+  "source": "internal/domain/appnotification/handler.go:handleAcknowledge",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/applications": {
+  "source": "internal/domain/application/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/commission-payouts": {
+  "source": "internal/domain/affiliate/handler.go:handleCreatePayout",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/commission-payouts/{id}/approve": {
+  "source": "internal/domain/affiliate/handler.go:handleApprovePayout",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/commission-payouts/{id}/fail": {
+  "source": "internal/domain/affiliate/handler.go:handleFailPayout",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/commission-payouts/{id}/pay": {
+  "source": "internal/domain/affiliate/handler.go:handlePayPayout",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/commission-payouts/{id}/reverse": {
+  "source": "internal/domain/affiliate/handler.go:handleReversePayout",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/commission-plans": {
+  "source": "internal/domain/affiliate/handler.go:handleCreateCommissionPlan",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/customers": {
+  "source": "internal/domain/customer/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/customers/{id}/contacts": {
+  "source": "internal/domain/customer/handler.go:handleCreateContact",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/downloads/authorize": {
+  "source": "internal/domain/release/handler.go:handleAuthorizeDownload",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/entitlements": {
+  "source": "internal/domain/entitlement/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/gateway-configs": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/gateway-configs/{id}/set-default": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleSetDefault",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/gateway-configs/{id}/test": {
+  "source": "internal/domain/gatewayconfig/handler.go:handleTest",
+  "body": "none",
+  "status": 200,
+  "envelope": "direct"
+ },
+ "POST /api/v1/invoices/{id}/issue": {
+  "source": "internal/domain/invoice/handler.go:handleIssue",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/invoices/{id}/void": {
+  "source": "internal/domain/invoice/handler.go:handleVoid",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/licenses": {
+  "source": "internal/domain/license/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/licenses/bulk": {
+  "source": "internal/domain/license/handler.go:handleBulkCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "direct"
+ },
+ "POST /api/v1/licenses/validate": {
+  "source": "internal/domain/license/handler.go:handleValidate",
+  "body": "required",
+  "statuses": [
+   200,
+   422
+  ],
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/licenses/{id}/addons/purchase": {
+  "source": "internal/domain/addon/handler.go:handlePurchase",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/licenses/{id}/entitlement-overrides": {
+  "source": "internal/domain/entitlement/handler.go:handleUpsertOverride",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/licenses/{id}/reactivate": {
+  "source": "internal/domain/license/handler.go:handleReactivate",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/licenses/{id}/reissue": {
+  "source": "internal/domain/license/handler.go:handleReissue",
+  "body": "optional",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/licenses/{id}/revoke": {
+  "source": "internal/domain/license/handler.go:handleRevoke",
+  "body": "optional",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/licenses/{id}/suspend": {
+  "source": "internal/domain/license/handler.go:handleSuspend",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/machines": {
+  "source": "internal/domain/machine/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/machines/{id}/decommission": {
+  "source": "internal/domain/machine/handler.go:handleDecommission",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/notification-templates": {
+  "source": "internal/domain/notification/handler.go:handleTemplateCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/notifications": {
+  "source": "internal/domain/notification/handler.go:handleNotificationQueue",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/notifications/webhooks/ses": {
+  "source": "internal/domain/notification/handler.go:handleSESWebhook",
+  "body": "required",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/notifications/{id}/retry": {
+  "source": "internal/domain/notification/handler.go:handleNotificationRetry",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/offline-certificates": {
+  "source": "internal/domain/offline/handler.go:handleIssue",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/offline-certificates/verify": {
+  "source": "internal/domain/offline/handler.go:handleVerify",
+  "body": "required",
+  "statuses": [
+   200,
+   422
+  ],
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/offline-certificates/{id}/approve": {
+  "source": "internal/domain/offline/handler.go:handleApprove",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/offline-certificates/{id}/reissue": {
+  "source": "internal/domain/offline/handler.go:handleReissue",
+  "body": "none",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/offline-certificates/{id}/revoke": {
+  "source": "internal/domain/offline/handler.go:handleRevoke",
+  "body": "optional",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/orders": {
+  "source": "internal/domain/order/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/orders/{id}/checkout": {
+  "source": "internal/domain/order/handler.go:handleCheckout",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/orders/{id}/fulfill": {
+  "source": "internal/domain/order/handler.go:handleFulfill",
+  "body": "optional",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/organizations": {
+  "source": "internal/domain/organization/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/payment-methods": {
+  "source": "internal/domain/paymentmethod/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/payment-methods/{id}/set-default": {
+  "source": "internal/domain/paymentmethod/handler.go:handleSetDefault",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/payments/{id}/reconcile": {
+  "source": "internal/domain/payment/handler.go:handleReconcile",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/payments/{id}/refund": {
+  "source": "internal/domain/payment/handler.go:handleRefund",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/plans": {
+  "source": "internal/domain/plan/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/products": {
+  "source": "internal/domain/product/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/referral-codes": {
+  "source": "internal/domain/referral/handler.go:handleCreateCode",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/referral-codes/{id}/disable": {
+  "source": "internal/domain/referral/handler.go:handleDisableCode",
+  "body": "none",
+  "status": 200,
+  "envelope": "status"
+ },
+ "POST /api/v1/referral-events": {
+  "source": "internal/domain/referral/handler.go:handleCreateEvent",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/referral-events/{id}/qualify": {
+  "source": "internal/domain/referral/handler.go:handleQualifyEvent",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/referral-events/{id}/reject": {
+  "source": "internal/domain/referral/handler.go:handleRejectEvent",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/referral-events/{id}/reward": {
+  "source": "internal/domain/referral/handler.go:handleRewardEvent",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/referral-programs": {
+  "source": "internal/domain/referral/handler.go:handleCreateProgram",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/releases": {
+  "source": "internal/domain/release/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/releases/{id}/artifacts": {
+  "source": "internal/domain/release/handler.go:handleUploadArtifact",
+  "body": "multipart",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/releases/{id}/publish": {
+  "source": "internal/domain/release/handler.go:handlePublish",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/releases/{id}/yank": {
+  "source": "internal/domain/release/handler.go:handleYank",
+  "body": "optional",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/subscriptions": {
+  "source": "internal/domain/subscription/handler.go:handleCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/subscriptions/{id}/cancel": {
+  "source": "internal/domain/subscription/handler.go:handleCancel",
+  "body": "optional",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/subscriptions/{id}/change-plan": {
+  "source": "internal/domain/subscription/handler.go:handleChangePlan",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/subscriptions/{id}/pause": {
+  "source": "internal/domain/subscription/handler.go:handlePause",
+  "body": "optional",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/subscriptions/{id}/renew": {
+  "source": "internal/domain/subscription/handler.go:handleRenew",
+  "body": "optional",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/subscriptions/{id}/resume": {
+  "source": "internal/domain/subscription/handler.go:handleResume",
+  "body": "optional",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/subscriptions/{id}/seats": {
+  "source": "internal/domain/subscription/handler.go:handleUpdateSeats",
+  "body": "required",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/usage-adjustments": {
+  "source": "internal/domain/usage/handler.go:handleCreateAdjustment",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/usage-credits": {
+  "source": "internal/domain/usage/handler.go:handleCreateCredit",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/usage-meters": {
+  "source": "internal/domain/usage/handler.go:handleCreateMeter",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/usage/reports": {
+  "source": "internal/domain/usage/handler.go:handleIngestReports",
+  "body": "required",
+  "status": 200,
+  "envelope": "direct"
+ },
+ "POST /api/v1/webhook-endpoints": {
+  "source": "internal/domain/webhook/handler.go:handleEndpointCreate",
+  "body": "required",
+  "status": 201,
+  "envelope": "data"
+ },
+ "POST /api/v1/webhook-endpoints/{id}/test": {
+  "source": "internal/domain/webhook/handler.go:handleEndpointTest",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/webhook-events/{id}/retry": {
+  "source": "internal/domain/webhook/handler.go:handleEventRetry",
+  "body": "none",
+  "status": 200,
+  "envelope": "data"
+ },
+ "POST /api/v1/webhooks/{provider}": {
+  "source": "internal/gateway/webhookhandler.go:handleWebhook",
+  "body": "required",
+  "envelope": "unknown"
+ }
+}

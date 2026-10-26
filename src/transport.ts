@@ -46,6 +46,15 @@ export interface RequestSpec {
   acceptedStatuses?: readonly number[];
 }
 
+/**
+ * Release a response body we will not read. Not awaited: some fetch
+ * implementations (test doubles, wrappers) never settle cancel(), and the
+ * caller must not wait on it.
+ */
+function discardBody(response: Response): void {
+  response.body?.cancel().catch(() => undefined);
+}
+
 const MAX_JSON_BYTES = 8 * 1024 * 1024;
 const MAX_ERROR_BYTES = 4096;
 
@@ -341,7 +350,7 @@ export class Transport {
           const delay =
             parseRetryAfter(response.headers.get('retry-after')) ??
             Math.random() * Math.min(500 * 2 ** attempt, 5000);
-          await response.body?.cancel();
+          discardBody(response);
           await wait(delay, controller.signal);
           continue;
         }
@@ -369,7 +378,7 @@ export class Transport {
           );
         }
         if (spec.kind === 'none') {
-          await response.body?.cancel();
+          discardBody(response);
           return undefined as T;
         }
         if (spec.kind === 'raw') {

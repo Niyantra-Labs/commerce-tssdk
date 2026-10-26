@@ -317,7 +317,7 @@ async function main() {
 
   await domainLifecycles({ api: authenticated, organization, product, customer });
 
-  await serverExtensions({ api: authenticated, organization, product, license });
+  await serverExtensions({ api: authenticated, organization, product, customer, license });
 
   await tenantIsolation({
     organization,
@@ -615,8 +615,31 @@ async function domainLifecycles({ api, organization, product, customer }) {
  * Server routes beyond Go SDK parity: gateway configs, notifications,
  * application notifications, and releases with a streamed download.
  */
-async function serverExtensions({ api, organization, product, license }) {
+async function serverExtensions({ api, organization, product, customer, license }) {
   const id = randomUUID().slice(0, 8);
+
+  const override = await api.licenses.upsertEntitlementOverride(license.id, {
+    feature_key: `sso_${id}`,
+    enabled: true,
+    value: 'on',
+    reason: 'sdk smoke',
+  });
+  assert.equal(override.license_id, license.id);
+  assert.equal(override.feature_key, `sso_${id}`);
+  assert.equal(override.value, 'on');
+  const spare = await api.licenses.create({
+    product_id: product.id,
+    customer_id: customer.id,
+    license_type: 'perpetual',
+    max_activations: 1,
+    perpetual: true,
+  });
+  assert.deepEqual(await api.licenses.suspend(spare.id), { status: 'suspended' });
+  assert.deepEqual(await api.licenses.reactivate(spare.id), { status: 'active' });
+  const csv = await api.auditLogs.exportCsv({ limit: 5 });
+  assert.match(csv.headers.get('content-type') ?? '', /csv/);
+  assert.match((await csv.text()).split('\n')[0] ?? '', /action/);
+  passed('license override (returns the saved override), suspend/reactivate, audit CSV export');
 
   const providers = await api.gatewayProviders.list();
   assert.ok(providers.some((provider) => provider.id === 'stripe'));

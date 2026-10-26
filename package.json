@@ -42,12 +42,15 @@
     "fmt:check": "prettier --check src test examples integration README.md doc package.json",
     "lint": "eslint .",
     "docs": "typedoc --out .typedoc src/index.ts",
-    "audit": "npm audit --omit=dev"
+    "audit": "npm audit --omit=dev",
+    "contract:manifest": "python3 -I scripts/route-manifest.py ${COMMERCE_REPO:-../commerce} > test/fixtures/routes.json",
+    "contract:check": "python3 -I scripts/route-manifest.py ${COMMERCE_REPO:-../commerce} | diff -u test/fixtures/routes.json - && echo \"route manifest matches the server\""
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^20.0.0",
     "eslint": "^9.0.0",
+    "msw": "2.15.0",
     "prettier": "^3.0.0",
     "typedoc": "^0.28.0",
     "typescript": "^5.7.0",

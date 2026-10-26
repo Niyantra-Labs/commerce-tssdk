@@ -93,15 +93,9 @@ export class LicenseService extends CollectionService<M.License, M.LicenseListPa
       options,
     );
   }
-  suspend(
-    id: string,
-    input: M.LicenseSuspendParams,
-    options?: RequestOptions,
-  ): Promise<C.StatusResult> {
-    return this.http.request(
-      { method: 'POST', path: `${this.item(id)}/suspend`, body: input },
-      options,
-    );
+  /** Suspend a license. The server records no reason for suspensions. */
+  suspend(id: string, options?: RequestOptions): Promise<C.StatusResult> {
+    return this.http.request({ method: 'POST', path: `${this.item(id)}/suspend` }, options);
   }
   reactivate(id: string, options?: RequestOptions): Promise<C.StatusResult> {
     return this.http.request({ method: 'POST', path: `${this.item(id)}/reactivate` }, options);
@@ -134,12 +128,13 @@ export class LicenseService extends CollectionService<M.License, M.LicenseListPa
       options,
     );
   }
+  /** Create or replace the license's override for one feature; returns the saved override. */
   upsertEntitlementOverride(
     id: string,
     input: M.EntitlementOverrideParams,
     options?: RequestOptions,
-  ): Promise<void> {
-    return this.action(id, 'entitlement-overrides', input, options, 'none');
+  ): Promise<M.EntitlementOverride> {
+    return this.action(id, 'entitlement-overrides', input, options);
   }
 }
 
@@ -606,13 +601,15 @@ export class AuditLogService {
       options,
     );
   }
+  /** Stream the matching audit logs as CSV (the server answers JSON without `format=csv`). */
   exportCsv(params?: M.AuditLogListParams, options?: RequestOptions): Promise<Response> {
     return this.http.request(
       {
         method: 'GET',
         path: '/audit-logs/export',
-        query: params as Record<string, string | number | undefined>,
+        query: { ...(params as Record<string, string | number | undefined>), format: 'csv' },
         kind: 'raw',
+        headers: { Accept: 'text/csv' },
       },
       options,
     );

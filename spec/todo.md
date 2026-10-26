@@ -189,29 +189,9 @@ Each service is a class (or object literal with methods) that shares a reference
 - [ ] AbortSignal propagation tests — verify cancelling aborts the underlying fetch and rejects with `CommerceTimeoutError` / `AbortError`
 
 ### 2.2 Service Tests (with MSW)
-- [ ] Organization CRUD
-- [ ] Product CRUD
-- [ ] Plan CRUD + Compare
-- [ ] Customer CRUD + Contact
-- [ ] License CRUD + Validate + BulkCreate
-- [ ] Activation Activate/Deactivate
-- [ ] Machine CRUD + Decommission
-- [ ] Subscription lifecycle (create, renew, pause, resume, cancel, change-plan, seats)
-- [ ] Entitlement CRUD + Override
-- [ ] Addon CRUD + Purchase
-- [ ] UsageMeter CRUD
-- [ ] Usage Adjustment + Credit
-- [ ] Order CRUD + Pay
-- [ ] Payment List + Refund + Reconcile
-- [ ] Invoice List + Get + Send
-- [ ] Webhook Endpoint CRUD
-- [ ] Webhook Event List + Get + Retry
-- [ ] Application + ApiKey CRUD
-- [ ] OfflineCertificate lifecycle
-- [ ] Referral Program/Code/Event
-- [ ] Affiliate/Link/Event/Payout
-- [ ] AuditLog List
-- [ ] System SigningKey + Health
+- [x] `test/contract.test.ts`: one MSW-backed contract case per public service method (205 cases; a meta-test fails if any method lacks one). Each case is checked against `test/fixtures/routes.json`, generated from the Commerce Go handlers by `scripts/route-manifest.py` (210 routes: verb/path, success status, response envelope `data`/`list`/`status`/`direct`/`raw`, and whether the handler requires, accepts, or ignores a JSON body). Asserts the request hits a registered route (most-specific match, as ServeMux does), the exact query, a JSON body exactly when the handler 400s without one, no body when the handler reads none, and that the SDK decodes the envelope the handler really writes. `npm run contract:check` fails when the fixture drifts from the server source (`COMMERCE_REPO`, default `../commerce`); `npm run contract:manifest` regenerates it.
+- [x] Bugs it found and fixed (session 3): `licenses.suspend` sent a `reason` the handler never reads (now `suspend(id)`); `auditLogs.exportCsv` never sent `format=csv`, so it received JSON; `licenses.upsertEntitlementOverride` discarded the saved override the server returns (now typed `EntitlementOverride`; `value` is a string on the wire); the transport awaited `body.cancel()`, which never settles under some fetch implementations (MSW 2.15 reproduces it) — discarding a body is now non-blocking. Override/suspend/CSV export re-proven live.
+- Coverage maps to the old checklist as: organizations, products, plans (+compare), customers + contacts, licenses (all 15 methods), activations, machines (+decommission), subscriptions (full lifecycle), entitlements + override, addons + purchase, usage meters, usage adjustment/credit + reporter, orders (create/get/checkout/fulfill — Go's update/pay have no server route), payments (list/get/refund/reconcile), invoices (list/get/issue/void/pdf — Go's send has no server route), webhook endpoints/events, applications + API keys, offline certificates, referral programs/codes/events, affiliates/links/events/payouts, audit logs (+CSV), system, and the server-extension services (gateways, notifications, application notifications, releases).
 
 ### 2.3 Specialized Feature Tests
 - [ ] `UsageReporter` HMAC signature generation tests with golden vectors shared across gosdk/rustsdk/tssdk

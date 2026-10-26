@@ -690,8 +690,9 @@ export interface EntitlementListParams extends ListParams {
 
 export interface EntitlementOverrideParams {
   feature_key: string;
-  enabled?: boolean | null;
-  value?: unknown;
+  enabled?: boolean;
+  /** The server stores the override value as a string. */
+  value?: string | null;
   config_payload?: Metadata;
   seat_limit?: number | null;
   usage_cap?: number | null;
@@ -801,10 +802,6 @@ export interface LicenseListParams extends ListParams {
 }
 
 export interface LicenseRevokeParams {
-  reason: string;
-}
-
-export interface LicenseSuspendParams {
   reason: string;
 }
 
@@ -2101,4 +2098,22 @@ export interface ReleaseArtifactUploadParams {
   filename: string;
   os?: string;
   arch?: string;
+}
+
+/** A per-license override of one entitled feature. */
+export interface EntitlementOverride {
+  readonly id: string;
+  readonly license_id: string;
+  readonly feature_key: string;
+  readonly enabled: boolean;
+  readonly value?: string | null;
+  readonly config_payload: Metadata | null;
+  readonly seat_limit?: number | null;
+  readonly usage_cap?: number | null;
+  readonly reason?: string | null;
+  readonly overridden_by?: string | null;
+  readonly expires_at?: string | null;
+  readonly version_constraint?: string | null;
+  readonly created_at: string;
+  readonly updated_at: string;
 }
