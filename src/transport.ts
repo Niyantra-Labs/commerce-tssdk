@@ -54,6 +54,7 @@ export interface RequestSpec {
   unauthenticated?: boolean;
   unprefixed?: boolean;
   headers?: Readonly<Record<string, string>>;
+  /** Can disable GET retries. Mutations are never retried, even when true. */
   retryable?: boolean;
   acceptedStatuses?: readonly number[];
 }
@@ -150,8 +151,10 @@ function withAbort<T>(value: Promise<T>, signal: AbortSignal): Promise<T> {
 
 async function readLimited(response: Response, maxBytes: number): Promise<string> {
   const length = response.headers.get('content-length');
-  if (length && Number(length) > maxBytes)
+  if (length && Number(length) > maxBytes) {
+    discardBody(response);
     throw new CommerceProtocolError('Response exceeds size limit');
+  }
   const reader = response.body?.getReader();
   if (!reader) return '';
   const chunks: Uint8Array[] = [];
@@ -161,7 +164,10 @@ async function readLimited(response: Response, maxBytes: number): Promise<string
       const result = await reader.read();
       if (result.done) break;
       size += result.value.byteLength;
-      if (size > maxBytes) throw new CommerceProtocolError('Response exceeds size limit');
+      if (size > maxBytes) {
+        reader.cancel().catch(() => undefined);
+        throw new CommerceProtocolError('Response exceeds size limit');
+      }
       chunks.push(result.value);
     }
   } finally {
@@ -298,17 +304,20 @@ export class Transport {
       () => controller.abort(new CommerceTimeoutError('Request timed out')),
       timeout,
     );
-    const retryable = !spec.formData && (spec.retryable ?? spec.method === 'GET');
+    const retryable = !spec.formData && spec.method === 'GET' && spec.retryable !== false;
     // A raw (streamed) response outlives this call: keep honouring the
     // caller's signal while the body is read. The timeout covers headers only.
     let streaming = false;
     try {
       const headers = new Headers({ Accept: 'application/json' });
+      let credential: string | undefined;
       if (typeof body === 'string') headers.set('Content-Type', 'application/json');
       if (options.requestId) headers.set('X-Request-ID', options.requestId);
       if (!spec.unauthenticated) {
-        if ('apiKey' in this.auth) headers.set('X-API-Key', this.auth.apiKey!);
-        else {
+        if ('apiKey' in this.auth) {
+          credential = this.auth.apiKey;
+          headers.set('X-API-Key', credential!);
+        } else {
           if (controller.signal.aborted) throw controller.signal.reason;
           const bearer = this.auth.bearerToken;
           const token =
@@ -316,6 +325,7 @@ export class Transport {
               ? await withAbort(Promise.resolve().then(bearer), controller.signal)
               : bearer;
           if (!token) throw new CommerceValidationError('Bearer token is empty');
+          credential = token;
           headers.set('Authorization', `Bearer ${token}`);
         }
       }
@@ -351,13 +361,15 @@ export class Transport {
             signal: controller.signal,
             redirect: 'manual',
           });
-        } catch (cause) {
+        } catch {
           if (controller.signal.aborted) throw controller.signal.reason;
           if (retryable && attempt < this.maxRetries) {
             await wait(Math.random() * Math.min(500 * 2 ** attempt, 5000), controller.signal);
             continue;
           }
-          throw new CommerceNetworkError('Network request failed', { cause });
+          throw new CommerceNetworkError('Network request failed', {
+            cause: new Error('Fetch failed'),
+          });
         }
         if (
           retryable &&
@@ -370,6 +382,10 @@ export class Transport {
           discardBody(response);
           await wait(delay, controller.signal);
           continue;
+        }
+        if (response.status >= 300 && response.status < 400) {
+          discardBody(response);
+          throw new CommerceProtocolError('Unexpected redirect response');
         }
         if (!response.ok && !spec.acceptedStatuses?.includes(response.status)) {
           let parsed: unknown;
@@ -389,7 +405,11 @@ export class Transport {
           throw new CommerceApiError(
             response.status,
             typeof api?.code === 'string' ? api.code : `http_${response.status}`,
-            typeof api?.message === 'string' ? api.message : `HTTP ${response.status}`,
+            typeof api?.message === 'string' && credential
+              ? api.message.replaceAll(credential, '[REDACTED]')
+              : typeof api?.message === 'string'
+                ? api.message
+                : `HTTP ${response.status}`,
             response.headers.get('x-request-id') ?? undefined,
             api?.details,
           );
@@ -402,13 +422,20 @@ export class Transport {
           streaming = true;
           return response as T;
         }
-        if (!response.headers.get('content-type')?.includes('json'))
+        const mediaType = response.headers
+          .get('content-type')
+          ?.split(';', 1)[0]
+          ?.trim()
+          .toLowerCase();
+        if (mediaType !== 'application/json' && !mediaType?.endsWith('+json'))
           throw new CommerceProtocolError('Expected JSON response');
         let parsed: unknown;
         try {
           parsed = parseJsonLosslessly(await readLimited(response, MAX_JSON_BYTES));
-        } catch (cause) {
-          throw new CommerceProtocolError('Invalid JSON response', { cause });
+        } catch {
+          throw new CommerceProtocolError('Invalid JSON response', {
+            cause: new Error('JSON decode failed'),
+          });
         }
         if (spec.kind === 'data' || spec.kind === 'list') {
           if (!parsed || typeof parsed !== 'object' || !('data' in parsed))

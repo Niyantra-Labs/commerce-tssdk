@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sdk:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run fmt:check
+      - run: npm test
+      - run: npm run docs
+      - run: npm run test:package
+      - run: npm audit --omit=dev
+      - name: Verify package contents
+        run: |
+          npm pack --dry-run --json > /tmp/commerce-pack.json
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const report = JSON.parse(readFileSync("/tmp/commerce-pack.json", "utf8"));
+            const pack = Array.isArray(report) ? report[0] : Object.values(report)[0];
+            if (!pack || !Array.isArray(pack.files)) throw new Error("Missing npm pack file list");
+            const unexpected = pack.files.map(file => file.path).filter(path =>
+              !path.startsWith("dist/") && !["LICENSE", "README.md", "package.json"].includes(path));
+            if (unexpected.length) throw new Error(`Unexpected package files: ${unexpected.join(", ")}`);
+          '
+
+  live:
+    if: github.event_name == 'workflow_dispatch' && vars.RUN_LIVE_CONTRACT == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: commerce-tssdk
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: commerce-tssdk
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: Niyantra-Labs/commerce
+          token: ${{ secrets.COMMERCE_REPO_TOKEN }}
+          path: commerce
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: commerce-tssdk/package-lock.json
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: '1.1.26'
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: '2.1.4'
+      - run: npm ci
+      - run: npm run contract:check
+      - run: docker compose -f integration/compose.yml up -d --build
+      - name: Wait for Commerce health
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent http://127.0.0.1:19094/health > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker compose -f integration/compose.yml logs app
+          exit 1
+      - run: npm run test:integration
+      - run: npm run test:runtimes
