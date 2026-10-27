@@ -352,7 +352,7 @@ export class OrderService {
       options,
     );
   }
-  /** Create a payment-gateway checkout session for the order. */
+  /** Create or reuse checkout instructions. Manual orders return offline collection instructions with no hosted URL. */
   checkout(id: string, options?: RequestOptions): Promise<Record<string, unknown>> {
     return this.http.request(
       { method: 'POST', path: `/orders/${pathSegment(id)}/checkout`, kind: 'data' },
@@ -394,7 +394,7 @@ export class PaymentService {
       options,
     );
   }
-  /** Refund all or part of a payment through its gateway. */
+  /** Refund all or part of a captured payment. Manual refunds record the offline action; the operator must return funds separately. */
   refund(id: string, input: M.PaymentRefundParams, options?: RequestOptions): Promise<M.Payment> {
     return this.http.request(
       { method: 'POST', path: `/payments/${pathSegment(id)}/refund`, body: input, kind: 'data' },
@@ -436,7 +436,7 @@ export class InvoiceService {
       options,
     );
   }
-  /** Finalize and issue a draft invoice; returns `{ status }`. */
+  /** Mark an invoice issued; order-created invoices are already issued. Returns `{ status }`. */
   issue(id: string, options?: RequestOptions): Promise<C.StatusResult> {
     return this.http.request(
       { method: 'POST', path: `/invoices/${pathSegment(id)}/issue` },

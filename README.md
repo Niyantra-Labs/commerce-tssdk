@@ -51,6 +51,10 @@ For each namespace's authentication, API-key scope, errors, and retry behavior, 
 
 `client.usageReporter.report(reports)` and `reportSingle(report)` HMAC-sign the exact JSON body with the API key using the server's canonical string and send it once. Each report needs a stable `idempotency_key`; the server deduplicates on it. The key needs the `usage:report` scope, and the server must have a usage meter for the `feature_key`.
 
+## Manual orders and refunds
+
+`client.orders.create({ ..., gateway: 'manual' })` creates a pending payment and an invoice that is already `issued`. `client.orders.checkout(id)` returns reusable offline collection instructions rather than a hosted URL. After receiving funds outside Commerce, call `client.orders.fulfill(id, { method: 'bank_transfer' })` to capture the payment and mark the invoice paid. `client.payments.refund(paymentId, { amount_cents, reason })` records a partial or full refund and creates a credit note for a captured manual payment; the operator must return the money separately. A pending manual payment cannot be refunded. `client.invoices.pdf(id)` returns a streamed PDF response.
+
 ## Webhooks
 
 ```ts

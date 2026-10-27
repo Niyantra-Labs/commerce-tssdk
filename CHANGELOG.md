@@ -18,6 +18,7 @@ All notable changes to this package are documented here. The format follows [Kee
 
 - Hardened transport validation, safe GET retries, error redaction, and protocol handling.
 - FIFO cancellable client rate-limit waits, preservation of the final HTTP error after retries, and explicit 202/204 no-body handling.
+- Documented and live-tested manual order checkout, fulfillment, refunds, and invoice lifecycle against the Commerce server.
 
 ### Security
 
