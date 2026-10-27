@@ -1073,6 +1073,12 @@ export interface AuthorizedDownload {
     readonly url: string;
 }
 
+// @public (undocumented)
+export interface BatchOptions {
+    concurrency?: number;
+    signal?: AbortSignal;
+}
+
 // @public
 export interface CachedOfflineCertificate {
     // (undocumented)
@@ -1080,6 +1086,9 @@ export interface CachedOfflineCertificate {
     // (undocumented)
     readonly signature: string;
 }
+
+// @public
+export function calculateProration(input: ProrationInput): ProrationPreview | undefined;
 
 // @public
 export interface CheckoutOption {
@@ -1136,6 +1145,7 @@ export class Client {
     get usageApiKey(): string | undefined;
     get usageMeters(): ResourceService<M.UsageMeter, M.UsageMeterCreateParams, M.UsageMeterUpdateParams, M.UsageMeterListParams, M.UsageMeter, M.UsageMeter>;
     get usageReporter(): UsageReporter;
+    use(middleware: TransportMiddleware): this;
     get webhookEndpoints(): WebhookEndpointService;
     get webhookEvents(): WebhookEventService;
 }
@@ -1143,9 +1153,13 @@ export class Client {
 // @public
 export interface ClientOptions {
     auth: Authentication;
+    backoffMultiplier?: number;
     baseUrl?: string;
+    debug?: boolean;
     fetch?: typeof fetch;
     hooks?: TransportHooks;
+    jitter?: 'full' | 'equal' | 'none';
+    logger?: CommerceLogger;
     maxRetries?: number;
     rateLimit?: {
         requestsPerSecond: number;
@@ -1198,6 +1212,18 @@ export class CommerceCryptoError extends CommerceError {
 // @public
 export class CommerceError extends Error {
     constructor(message: string, options?: ErrorOptions);
+}
+
+// @public
+export interface CommerceLogger {
+    // (undocumented)
+    debug(message: string, event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>): void;
+    // (undocumented)
+    error(message: string, event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>): void;
+    // (undocumented)
+    info(message: string, event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>): void;
+    // (undocumented)
+    warn(message: string, event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>): void;
 }
 
 // @public
@@ -1497,6 +1523,9 @@ export class ContactService {
     listContacts(customerId: string, options?: RequestOptions): Promise<ReadonlyArray<M.Contact>>;
 }
 
+// @public
+export function createLicensesBatch(service: LicenseService, inputs: readonly LicenseCreateParams[], options?: RequestOptions & BatchOptions): Promise<PromiseSettledResult<License>[]>;
+
 // @public (undocumented)
 export interface Customer {
     // (undocumented)
@@ -1781,6 +1810,12 @@ export interface EntitlementUpdateParams {
     version_constraint?: string | null;
 }
 
+// @public
+export interface FingerprintInput {
+    components: Readonly<Record<string, string>>;
+    namespace: string;
+}
+
 // @public (undocumented)
 export interface GatewayCapabilities {
     // (undocumented)
@@ -2002,6 +2037,9 @@ export interface GatewayWebhookLogListParams {
 
 // @public (undocumented)
 export type GatewayWebhookLogStatus = 'received' | 'processed' | 'failed' | 'ignored' | 'duplicate';
+
+// @public
+export function generateMachineFingerprint(input: FingerprintInput): Promise<string>;
 
 // @public
 export type HeaderSource = Headers | Readonly<Record<string, string>>;
@@ -2367,6 +2405,17 @@ export interface ListResponse<T> {
     readonly total: number;
 }
 
+// @public
+export class LocalOfflineCertificateStorage implements OfflineCertificateStorage {
+    constructor(storage: Storage, prefix?: string);
+    // (undocumented)
+    delete(key: string): Promise<void>;
+    // (undocumented)
+    get(key: string): Promise<CachedOfflineCertificate | undefined>;
+    // (undocumented)
+    set(key: string, value: CachedOfflineCertificate): Promise<void>;
+}
+
 // @public (undocumented)
 export interface Machine {
     // (undocumented)
@@ -2471,6 +2520,14 @@ export class MemoryOfflineCertificateStorage implements OfflineCertificateStorag
 
 // @public (undocumented)
 export type Metadata = Record<string, unknown>;
+
+// @public
+export interface MiddlewareRequest {
+    // (undocumented)
+    readonly method: RequestSpec['method'];
+    // (undocumented)
+    readonly path: string;
+}
 
 // @public
 interface Notification_2 {
@@ -3698,6 +3755,42 @@ export interface ProductUpdateParams {
 }
 
 // @public (undocumented)
+export interface ProrationInput {
+    // (undocumented)
+    readonly behavior?: 'none' | 'create_prorations' | 'always_invoice';
+    // (undocumented)
+    readonly currentPlan: ProrationPlan;
+    // (undocumented)
+    readonly currentQuantity: number;
+    // (undocumented)
+    readonly nextPlan: ProrationPlan;
+    // (undocumented)
+    readonly nextQuantity: number;
+    // (undocumented)
+    readonly now?: string | Date;
+    // (undocumented)
+    readonly periodEnd: string | Date | null;
+    // (undocumented)
+    readonly periodStart: string | Date | null;
+}
+
+// @public
+export interface ProrationPlan {
+    // (undocumented)
+    readonly currency: string;
+    // (undocumented)
+    readonly min_seats: number;
+    // (undocumented)
+    readonly name: string;
+    // (undocumented)
+    readonly price_cents: number;
+    // (undocumented)
+    readonly seat_based: boolean;
+    // (undocumented)
+    readonly seat_price_cents: number;
+}
+
+// @public (undocumented)
 export interface ProrationPreview {
     // (undocumented)
     readonly amount_cents: number;
@@ -4266,6 +4359,7 @@ export interface RequestHookEvent {
 
 // @public
 export interface RequestOptions {
+    headers?: Readonly<Record<string, string>>;
     requestId?: string;
     signal?: AbortSignal;
     timeoutMs?: number;
@@ -4360,6 +4454,9 @@ export interface ServerSubscriptionDetail {
     // (undocumented)
     readonly subscription: M.Subscription;
 }
+
+// @public
+export function settleBatch<T, R>(inputs: readonly T[], worker: (input: T, index: number) => Promise<R>, options?: BatchOptions): Promise<PromiseSettledResult<R>[]>;
 
 // @public (undocumented)
 export interface SigningKey {
@@ -4595,6 +4692,7 @@ export class Transport {
     // (undocumented)
     get apiKey(): string | undefined;
     request<T>(spec: RequestSpec, options?: RequestOptions): Promise<T>;
+    use(middleware: TransportMiddleware): this;
 }
 
 // @public (undocumented)
@@ -4606,6 +4704,9 @@ export interface TransportHooks {
     // (undocumented)
     onRetry?: (event: Readonly<RetryHookEvent>) => void | Promise<void>;
 }
+
+// @public (undocumented)
+export type TransportMiddleware = (request: Readonly<MiddlewareRequest>, next: (request: Readonly<MiddlewareRequest>) => Promise<unknown>) => Promise<unknown>;
 
 // @public
 export type TypedWebhookEvent = {

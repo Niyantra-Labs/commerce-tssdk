@@ -4,7 +4,14 @@ import type { RequestOptions } from '../transport.js';
 import { pathSegment, Transport } from '../transport.js';
 import { CollectionService, ResourceService } from './base.js';
 
-/** Pricing plans of a product. New plans are drafts; set `status: "active"` to sell or compare them. */
+/**
+ * Pricing plans of a product. New plans are drafts; set `status: "active"` to sell or compare them.
+ * @example
+ * ```ts
+ * const plan = await client.plans.create({ product_id, name: 'Pro', slug: 'pro', price_cents: 5000 });
+ * await client.plans.update(plan.id, { status: 'active' });
+ * ```
+ */
 export class PlanService extends ResourceService<
   M.Plan,
   M.PlanCreateParams,
@@ -23,7 +30,7 @@ export class PlanService extends ResourceService<
   }
 }
 
-/** Contacts attached to a customer. */
+/** Contacts attached to a customer. @example `await client.contacts.listContacts(customerId)` */
 export class ContactService {
   constructor(private readonly http: Transport) {}
   /** All contacts of a customer (not paginated). */
@@ -58,7 +65,14 @@ export class ContactService {
   }
 }
 
-/** Licenses: issuance, lifecycle, validation, add-ons, usage, and entitlement overrides. */
+/**
+ * Licenses: issuance, lifecycle, validation, add-ons, usage, and entitlement overrides.
+ * @example
+ * ```ts
+ * const license = await client.licenses.create({ product_id, customer_id });
+ * const validation = await client.licenses.validate({ license_key: license.license_key });
+ * ```
+ */
 export class LicenseService extends CollectionService<M.License, M.LicenseListParams> {
   constructor(http: Transport) {
     super(http, '/licenses');
@@ -155,7 +169,7 @@ export class LicenseService extends CollectionService<M.License, M.LicenseListPa
   }
 }
 
-/** Machine activations of licenses. */
+/** Machine activations of licenses. @example `await client.activations.activate({ license_key, fingerprint })` */
 export class ActivationService {
   constructor(private readonly http: Transport) {}
   /** Activate a license on a machine by license key and fingerprint (public route). Creates the machine record if needed. */
@@ -203,7 +217,7 @@ export class ActivationService {
   }
 }
 
-/** Machine records. Machines are shared across organizations by fingerprint; an org-scoped key sees only machines its licenses use and cannot update, delete, or decommission them. */
+/** Machine records. Machines are shared across organizations by fingerprint; an org-scoped key sees only machines its licenses use and cannot update, delete, or decommission them. @example `await client.machines.list({ limit: 10 })` */
 export class MachineService extends ResourceService<
   M.Machine,
   M.MachineCreateParams,
@@ -221,7 +235,14 @@ export class MachineService extends ResourceService<
   }
 }
 
-/** Recurring subscriptions and their lifecycle. */
+/**
+ * Recurring subscriptions and their lifecycle.
+ * @example
+ * ```ts
+ * const result = await client.subscriptions.changePlan(subscriptionId, { plan_id: nextPlanId });
+ * console.log(result.proration?.amount_cents);
+ * ```
+ */
 export class SubscriptionService extends CollectionService<
   M.Subscription,
   M.SubscriptionListParams,
@@ -301,7 +322,7 @@ export class SubscriptionService extends CollectionService<
   }
 }
 
-/** Manual usage adjustments and credits (metered usage itself goes through `usageReporter`). */
+/** Manual usage adjustments and credits (metered usage itself goes through `usageReporter`). @example `await client.usage.createAdjustment(input)` */
 export class UsageService {
   constructor(private readonly http: Transport) {}
   /** Record a correction to a license's metered usage. */
@@ -323,7 +344,14 @@ export class UsageService {
   }
 }
 
-/** Orders and their checkout and fulfillment. The server has no order update or pay route. */
+/**
+ * Orders and their checkout and fulfillment. The server has no order update or pay route.
+ * @example
+ * ```ts
+ * const created = await client.orders.create({ customer_id, product_id, plan_id, order_type: 'new', gateway: 'manual' });
+ * const instructions = await client.orders.checkout(created.order.id);
+ * ```
+ */
 export class OrderService {
   constructor(private readonly http: Transport) {}
   /** List orders, optionally by customer or product. */
@@ -372,7 +400,13 @@ export class OrderService {
   }
 }
 
-/** Payments recorded against orders. */
+/**
+ * Payments recorded against orders.
+ * @example
+ * ```ts
+ * const payment = await client.payments.refund(paymentId, { amount_cents: 400, reason: 'return' });
+ * ```
+ */
 export class PaymentService {
   constructor(private readonly http: Transport) {}
   /** List payments, optionally by order or customer. */
@@ -414,7 +448,14 @@ export class PaymentService {
   }
 }
 
-/** Invoices. The server has no invoice send route; use `issue`. */
+/**
+ * Invoices. The server has no invoice send route; use `issue`.
+ * @example
+ * ```ts
+ * const pdf = await client.invoices.pdf(invoiceId);
+ * await pdf.arrayBuffer();
+ * ```
+ */
 export class InvoiceService {
   constructor(private readonly http: Transport) {}
   /** List invoices, optionally by customer or subscription. */
@@ -459,7 +500,7 @@ export class InvoiceService {
   }
 }
 
-/** Outbound webhook endpoints. The server has no delete route; disable an endpoint with `update`. */
+/** Outbound webhook endpoints. The server has no delete route; disable an endpoint with `update`. @example `await client.webhookEndpoints.list({ limit: 10 })` */
 export class WebhookEndpointService extends CollectionService<
   M.WebhookEndpoint,
   M.WebhookEndpointListParams
@@ -494,7 +535,7 @@ export class WebhookEndpointService extends CollectionService<
   }
 }
 
-/** Webhook deliveries and their attempts. */
+/** Webhook deliveries and their attempts. @example `await client.webhookEvents.list({ limit: 10 })` */
 export class WebhookEventService {
   constructor(private readonly http: Transport) {}
   /** List deliveries, optionally by endpoint, event type, or status. */
@@ -528,7 +569,7 @@ export class WebhookEventService {
   }
 }
 
-/** API keys of applications. Secrets are returned only by `create` and `rotate`. */
+/** API keys of applications. Secrets are returned only by `create` and `rotate`. @example `await client.apiKeys.list({ application_id })` */
 export class ApiKeyService {
   constructor(private readonly http: Transport) {}
   /** List keys, optionally by application, environment, or status. Secrets are never listed. */
@@ -584,7 +625,7 @@ export class ApiKeyService {
   }
 }
 
-/** Offline certificates for machines that cannot reach the server. See `OfflineVerifier` for local verification. */
+/** Offline certificates for machines that cannot reach the server. See `OfflineVerifier` for local verification. @example `await client.offlineCertificates.issue({ license_id, machine_id })` */
 export class OfflineCertificateService {
   constructor(private readonly http: Transport) {}
   /** Issue a certificate for a license on a machine; returns the certificate and an Ed25519 signature over its exact bytes. */
@@ -656,7 +697,7 @@ export class OfflineCertificateService {
   }
 }
 
-/** The audit trail of changes made through the API and console. */
+/** The audit trail of changes made through the API and console. @example `await client.auditLogs.list({ limit: 10 })` */
 export class AuditLogService {
   constructor(private readonly http: Transport) {}
   /** List audit entries with filters. */
@@ -696,7 +737,7 @@ export class AuditLogService {
   }
 }
 
-/** Server metadata endpoints. */
+/** Server metadata endpoints. @example `await client.system.health()` */
 export class SystemService {
   constructor(private readonly http: Transport) {}
   /** The server's Ed25519 public key (standard-base64 raw bytes) for verifying offline certificates. Public. */
@@ -712,7 +753,7 @@ export class SystemService {
   }
 }
 
-/** Shareable referral codes issued to referrers. */
+/** Shareable referral codes issued to referrers. @example `await client.referralCodes.list({ limit: 10 })` */
 export class ReferralCodeService extends CollectionService<
   M.ReferralCode,
   M.ReferralCodeListParams
@@ -732,7 +773,7 @@ export class ReferralCodeService extends CollectionService<
     return this.action(id, 'disable', undefined, options, 'none');
   }
 }
-/** Referral conversions and their lifecycle: pending → qualified → rewarded, or rejected before being rewarded. Disallowed transitions reject with 409 `invalid_transition`. */
+/** Referral conversions and their lifecycle: pending → qualified → rewarded, or rejected before being rewarded. Disallowed transitions reject with 409 `invalid_transition`. @example `await client.referralEvents.list({ limit: 10 })` */
 export class ReferralEventService extends CollectionService<
   M.ReferralEvent,
   M.ReferralEventListParams
@@ -772,7 +813,7 @@ export class ReferralEventService extends CollectionService<
     return this.action(id, 'reject', input, options);
   }
 }
-/** Affiliates and their approval lifecycle. */
+/** Affiliates and their approval lifecycle. @example `await client.affiliates.list({ limit: 10 })` */
 export class AffiliateService extends ResourceService<
   M.Affiliate,
   M.AffiliateCreateParams,
@@ -807,7 +848,7 @@ export class AffiliateService extends ResourceService<
     return this.action(id, 'terminate', undefined, options);
   }
 }
-/** Affiliate tracking links. */
+/** Affiliate tracking links. @example `await client.affiliateLinks.list({ limit: 10 })` */
 export class AffiliateLinkService extends CollectionService<
   M.AffiliateLink,
   M.AffiliateLinkListParams
@@ -838,7 +879,7 @@ export class AffiliateLinkService extends CollectionService<
     return this.action(id, 'disable', undefined, options, 'none');
   }
 }
-/** Affiliate clicks, signups, purchases, and refunds. */
+/** Affiliate clicks, signups, purchases, and refunds. @example `await client.affiliateEvents.list({ limit: 10 })` */
 export class AffiliateEventService extends CollectionService<
   M.AffiliateEvent,
   M.AffiliateEventListParams
@@ -862,7 +903,7 @@ export class AffiliateEventService extends CollectionService<
     return this.action(id, 'review', input, options);
   }
 }
-/** Commission payouts: pending → approved → processing → paid, with on_hold, failed, and reversed branches. Disallowed transitions reject with 409 `invalid_transition`. */
+/** Commission payouts: pending → approved → processing → paid, with on_hold, failed, and reversed branches. Disallowed transitions reject with 409 `invalid_transition`. @example `await client.commissionPayouts.list({ limit: 10 })` */
 export class CommissionPayoutService extends CollectionService<
   M.CommissionPayout,
   M.CommissionPayoutListParams
@@ -917,6 +958,7 @@ export class CommissionPayoutService extends CollectionService<
 /**
  * Payment gateway configurations. Credentials are provider secrets: call these
  * from a backend only. Responses never include stored credentials.
+ * @example `await client.gatewayConfigs.list({ limit: 10 })`
  */
 export class GatewayConfigService extends ResourceService<
   M.GatewayConfig,
@@ -953,7 +995,7 @@ export class GatewayConfigService extends ResourceService<
   }
 }
 
-/** Supported payment providers and the credentials each one needs. */
+/** Supported payment providers and the credentials each one needs. @example `await client.gatewayProviders.list()` */
 export class GatewayProviderService {
   constructor(private readonly http: Transport) {}
   /** Supported providers with their capabilities. */
@@ -973,7 +1015,7 @@ export class GatewayProviderService {
   }
 }
 
-/** Binary releases, their artifacts, and license-gated downloads. */
+/** Binary releases, their artifacts, and license-gated downloads. @example `await client.releases.list({ limit: 10 })` */
 export class ReleaseService extends CollectionService<
   M.Release,
   M.ReleaseListParams,
@@ -1077,7 +1119,7 @@ export class ReleaseService extends CollectionService<
   }
 }
 
-/** Email/SMS templates rendered by the notification service. */
+/** Email/SMS templates rendered by the notification service. @example `await client.notificationTemplates.list({ limit: 10 })` */
 export class NotificationTemplateService extends CollectionService<
   M.NotificationTemplate,
   M.NotificationTemplateListParams,
@@ -1109,7 +1151,7 @@ export class NotificationTemplateService extends CollectionService<
   }
 }
 
-/** Outbound email/SMS notifications and their delivery state. */
+/** Outbound email/SMS notifications and their delivery state. @example `await client.notifications.list({ limit: 10 })` */
 export class NotificationService extends CollectionService<
   M.Notification,
   M.NotificationListParams,
@@ -1131,7 +1173,7 @@ export class NotificationService extends CollectionService<
   }
 }
 
-/** In-app announcements and the feed installed software polls. */
+/** In-app announcements and the feed installed software polls. @example `await client.applicationNotifications.list({ limit: 10 })` */
 export class ApplicationNotificationService extends CollectionService<
   M.ApplicationNotification,
   M.ApplicationNotificationListParams
@@ -1183,6 +1225,7 @@ export class ApplicationNotificationService extends CollectionService<
 /**
  * Customers' saved payment methods (gateway tokens and display details only;
  * the SDK never handles raw card data). Backend use only.
+ * @example `await client.paymentMethods.list({ customer_id })`
  */
 export class PaymentMethodService extends CollectionService<
   M.PaymentMethod,

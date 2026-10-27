@@ -2,11 +2,15 @@ import { expectTypeOf } from 'expect-type';
 import { describe, it } from 'vitest';
 import {
   Client,
+  calculateProration,
+  createLicensesBatch,
   defineWebhookHandler,
   isKnownWebhookEvent,
   type Authentication,
+  type MiddlewareRequest,
   type CachedOfflineCertificate,
   type TypedWebhookEvent,
+  type TransportMiddleware,
   type WebhookEventBase,
 } from '../src/index.js';
 
@@ -33,5 +37,14 @@ describe('public type surface', () => {
       Promise<{ readonly valid: boolean }>
     >();
     expectTypeOf<WebhookEventBase['data']>().toEqualTypeOf<unknown>();
+  });
+
+  it('keeps phase 3 middleware and helper contracts typed', () => {
+    expectTypeOf<Client['use']>().parameter(0).toEqualTypeOf<TransportMiddleware>();
+    expectTypeOf<MiddlewareRequest['path']>().toEqualTypeOf<string>();
+    expectTypeOf(createLicensesBatch).returns.toEqualTypeOf<
+      Promise<PromiseSettledResult<Awaited<ReturnType<Client['licenses']['create']>>>[]>
+    >();
+    expectTypeOf(calculateProration).returns.toMatchTypeOf<{ amount_cents: number } | undefined>();
   });
 });

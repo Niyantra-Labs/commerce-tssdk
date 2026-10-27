@@ -34,6 +34,37 @@ export interface TransportHooks {
   onRetry?: (event: Readonly<RetryHookEvent>) => void | Promise<void>;
 }
 
+/** Optional diagnostic sink. The SDK passes only redacted, frozen metadata. */
+export interface CommerceLogger {
+  debug(
+    message: string,
+    event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>,
+  ): void;
+  info(
+    message: string,
+    event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>,
+  ): void;
+  warn(
+    message: string,
+    event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>,
+  ): void;
+  error(
+    message: string,
+    event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>,
+  ): void;
+}
+
+/** Middleware sees only a collection path and method; request bytes stay private. */
+export interface MiddlewareRequest {
+  readonly method: RequestSpec['method'];
+  readonly path: string;
+}
+
+export type TransportMiddleware = (
+  request: Readonly<MiddlewareRequest>,
+  next: (request: Readonly<MiddlewareRequest>) => Promise<unknown>,
+) => Promise<unknown>;
+
 /** Injectable time source for deterministic client rate-limit tests. */
 export interface RateLimitClock {
   now(): number;
@@ -79,10 +110,18 @@ export interface ClientOptions {
   timeoutMs?: number;
   /** Retries for GET requests on 429/502/503/504 and network failures. Mutations are never retried. */
   maxRetries?: number;
+  /** Exponential backoff multiplier for safe GET retries (default 2). */
+  backoffMultiplier?: number;
+  /** Backoff jitter for safe GET retries (default full). Retry-After is always respected. */
+  jitter?: 'full' | 'equal' | 'none';
   /** Optional per-client request budget. */
   rateLimit?: { requestsPerSecond: number; burst?: number; clock?: RateLimitClock };
   /** Synchronous, best-effort metadata hooks. Keep callbacks fast; returned promises are not awaited. */
   hooks?: TransportHooks;
+  /** Emit redacted attempt events to logger.debug when true. Default false. */
+  debug?: boolean;
+  /** Logging sink; defaults to a no-op. It never receives headers, bodies, or credentials. */
+  logger?: CommerceLogger;
   /** All credentials are intended for trusted runtimes. */
   auth: Authentication;
 }
@@ -95,6 +134,8 @@ export interface RequestOptions {
   requestId?: string;
   /** Overrides the client timeout for this call. */
   timeoutMs?: number;
+  /** Additional per-call headers. Auth, signature, routing, and content headers are protected. */
+  headers?: Readonly<Record<string, string>>;
 }
 
 /** How a response body is decoded: `data` unwraps `{ data }`, `list` validates `{ data, total }`, `raw` returns the `Response`, `none` discards the body; omitted returns the JSON as-is. */
@@ -287,7 +328,12 @@ export class Transport {
   private readonly auth: Authentication;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
+  private readonly backoffMultiplier: number;
+  private readonly jitter: 'full' | 'equal' | 'none';
   private readonly hooks: TransportHooks | undefined;
+  private readonly debug: boolean;
+  private readonly logger: CommerceLogger | undefined;
+  private readonly middleware: TransportMiddleware[] = [];
   private readonly rateLimit?: {
     intervalMs: number;
     burst: number;
@@ -334,7 +380,11 @@ export class Transport {
     Object.defineProperty(this, 'auth', { enumerable: false });
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.maxRetries = options.maxRetries ?? 2;
+    this.backoffMultiplier = options.backoffMultiplier ?? 2;
+    this.jitter = options.jitter ?? 'full';
     this.hooks = options.hooks;
+    this.debug = options.debug ?? false;
+    this.logger = options.logger;
     if (options.rateLimit) {
       const {
         requestsPerSecond,
@@ -364,7 +414,11 @@ export class Transport {
       this.timeoutMs <= 0 ||
       !Number.isInteger(this.maxRetries) ||
       this.maxRetries < 0 ||
-      this.maxRetries > 10
+      this.maxRetries > 10 ||
+      !Number.isFinite(this.backoffMultiplier) ||
+      this.backoffMultiplier < 1 ||
+      this.backoffMultiplier > 10 ||
+      !['full', 'equal', 'none'].includes(this.jitter)
     ) {
       throw new CommerceValidationError('Invalid timeout or retry count');
     }
@@ -372,6 +426,36 @@ export class Transport {
 
   get apiKey(): string | undefined {
     return 'apiKey' in this.auth ? this.auth.apiKey : undefined;
+  }
+
+  /** Register metadata-only middleware; call before issuing requests. */
+  use(middleware: TransportMiddleware): this {
+    this.middleware.push(middleware);
+    return this;
+  }
+
+  private emitDiagnostic(
+    name: 'request' | 'response' | 'retry',
+    event: RequestHookEvent | ResponseHookEvent | RetryHookEvent,
+  ): void {
+    const frozen = Object.freeze(event);
+    if (name === 'request') emitHook(this.hooks?.onRequest, frozen as RequestHookEvent);
+    if (name === 'response') emitHook(this.hooks?.onResponse, frozen as ResponseHookEvent);
+    if (name === 'retry') emitHook(this.hooks?.onRetry, frozen as RetryHookEvent);
+    if (this.debug && this.logger) {
+      try {
+        this.logger.debug(`commerce.${name}`, frozen);
+      } catch {
+        // Diagnostics never affect the HTTP request.
+      }
+    }
+  }
+
+  private retryDelay(attempt: number): number {
+    const cap = Math.min(500 * this.backoffMultiplier ** attempt, 5000);
+    if (this.jitter === 'none') return cap;
+    if (this.jitter === 'equal') return cap / 2 + (Math.random() * cap) / 2;
+    return Math.random() * cap;
   }
 
   private acquireRateToken(signal: AbortSignal): Promise<void> | undefined {
@@ -428,6 +512,37 @@ export class Transport {
 
   /** Send one request through the shared pipeline (auth, retries, timeout, decoding). */
   async request<T>(spec: RequestSpec, options: RequestOptions = {}): Promise<T> {
+    if (
+      !spec.path.startsWith('/') ||
+      spec.path.includes('?') ||
+      spec.path.includes('#') ||
+      spec.path.split('/').includes('..')
+    )
+      throw new CommerceValidationError('Invalid request path');
+    if (this.middleware.length === 0) return this.execute<T>(spec, options);
+    const request = Object.freeze({
+      method: spec.method,
+      path: `${spec.unprefixed ? '' : '/api/v1'}/${spec.path.split('/')[1] ?? ''}`,
+    });
+    const chain = [...this.middleware];
+    const dispatch = (index: number): Promise<unknown> => {
+      if (index === chain.length) return this.execute<T>(spec, options);
+      const middleware = chain[index];
+      if (!middleware) return this.execute<T>(spec, options);
+      let called = false;
+      return Promise.resolve(
+        middleware(request, (forwarded) => {
+          if (forwarded !== request || called)
+            throw new CommerceValidationError('Middleware must forward the original request once');
+          called = true;
+          return dispatch(index + 1);
+        }),
+      );
+    };
+    return dispatch(0) as Promise<T>;
+  }
+
+  private async execute<T>(spec: RequestSpec, options: RequestOptions): Promise<T> {
     const path = `${this.base.pathname.replace(/\/$/, '')}${spec.unprefixed ? '' : '/api/v1'}${spec.path}`;
     if (
       !spec.path.startsWith('/') ||
@@ -461,6 +576,8 @@ export class Transport {
     const secretValues = new Set<string>();
     gatherSecrets(spec.body, secretValues);
     gatherSecrets(spec.query, secretValues);
+    for (const value of Object.values(spec.headers ?? {})) if (value) secretValues.add(value);
+    for (const value of Object.values(options.headers ?? {})) if (value) secretValues.add(value);
     if (spec.serializedBody) {
       try {
         gatherSecrets(JSON.parse(spec.serializedBody), secretValues);
@@ -502,16 +619,23 @@ export class Transport {
     let streaming = false;
     try {
       const headers = new Headers({ Accept: 'application/json' });
+      const setHeader = (name: string, value: string) => {
+        try {
+          headers.set(name, value);
+        } catch {
+          throw new CommerceValidationError('Invalid request header');
+        }
+      };
       const runtime = sdkRuntime();
-      if (runtime) headers.set('User-Agent', `niyantra-commerce-ts/${SDK_VERSION} (${runtime})`);
+      if (runtime) setHeader('User-Agent', `niyantra-commerce-ts/${SDK_VERSION} (${runtime})`);
       let credential: string | undefined;
-      if (typeof body === 'string') headers.set('Content-Type', 'application/json');
-      if (options.requestId) headers.set('X-Request-ID', options.requestId);
+      if (typeof body === 'string') setHeader('Content-Type', 'application/json');
+      if (options.requestId) setHeader('X-Request-ID', options.requestId);
       if (!spec.unauthenticated) {
         if ('apiKey' in this.auth) {
           credential = this.auth.apiKey;
           if (!credential) throw new CommerceValidationError('API key is empty');
-          headers.set('X-API-Key', credential);
+          setHeader('X-API-Key', credential);
         } else {
           controller.signal.throwIfAborted();
           const bearer = this.auth.bearerToken;
@@ -521,7 +645,7 @@ export class Transport {
               : bearer;
           if (!token) throw new CommerceValidationError('Bearer token is empty');
           credential = token;
-          headers.set('Authorization', `Bearer ${token}`);
+          setHeader('Authorization', `Bearer ${token}`);
         }
       }
       if (credential) secretValues.add(credential);
@@ -529,7 +653,16 @@ export class Transport {
       for (const [key, value] of Object.entries(spec.headers ?? {})) {
         if (/^(authorization|x-api-key|host|content-type|user-agent)$/i.test(key))
           throw new CommerceValidationError('Protected header override');
-        headers.set(key, value);
+        setHeader(key, value);
+      }
+      for (const [key, value] of Object.entries(options.headers ?? {})) {
+        if (
+          /^(authorization|x-api-key|host|content-type|user-agent|cookie|x-request-id|x-org-id|idempotency-key|x-usage-|x-niyantra-)/i.test(
+            key,
+          )
+        )
+          throw new CommerceValidationError('Protected header override');
+        setHeader(key, value);
       }
       for (let attempt = 0; ; attempt++) {
         const started = Date.now();
@@ -538,7 +671,7 @@ export class Transport {
         if (rateWait) await rateWait;
         let response: Response;
         try {
-          emitHook(this.hooks?.onRequest, hookBase(attempt + 1, started, credential));
+          this.emitDiagnostic('request', hookBase(attempt + 1, started, credential));
           response = await this.fetcher(url, {
             method: spec.method,
             headers,
@@ -549,8 +682,8 @@ export class Transport {
         } catch (cause) {
           controller.signal.throwIfAborted();
           if (retryable && attempt < this.maxRetries) {
-            const delay = Math.random() * Math.min(500 * 2 ** attempt, 5000);
-            emitHook(this.hooks?.onRetry, {
+            const delay = this.retryDelay(attempt);
+            this.emitDiagnostic('retry', {
               ...hookBase(attempt + 1, started, credential),
               reason: 'network',
               delayMs: delay,
@@ -567,7 +700,7 @@ export class Transport {
           });
         }
         const responseId = response.headers.get('x-request-id');
-        emitHook(this.hooks?.onResponse, {
+        this.emitDiagnostic('response', {
           ...hookBase(attempt + 1, started, credential),
           status: response.status,
           ...(responseId && responseId !== credential && !secretValues.has(responseId)
@@ -580,10 +713,9 @@ export class Transport {
           [429, 502, 503, 504].includes(response.status)
         ) {
           const delay =
-            parseRetryAfter(response.headers.get('retry-after')) ??
-            Math.random() * Math.min(500 * 2 ** attempt, 5000);
+            parseRetryAfter(response.headers.get('retry-after')) ?? this.retryDelay(attempt);
           discardBody(response);
-          emitHook(this.hooks?.onRetry, {
+          this.emitDiagnostic('retry', {
             ...hookBase(attempt + 1, started, credential),
             reason: `http_${String(response.status)}`,
             delayMs: delay,

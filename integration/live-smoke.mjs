@@ -9,6 +9,8 @@ import { URL } from 'node:url';
 import { TextEncoder } from 'node:util';
 import {
   Client,
+  calculateProration,
+  createLicensesBatch,
   defineWebhookHandler,
   isGeneratedLicenseKeyFormat,
   isKnownWebhookEvent,
@@ -714,11 +716,20 @@ async function domainLifecycles({ api, organization, product, customer }) {
     Date.parse(renewed.subscription.current_period_end) >
       Date.parse(subscription.current_period_end),
   );
+  const localProration = calculateProration({
+    currentPlan: basic,
+    nextPlan: pro,
+    currentQuantity: renewed.subscription.quantity,
+    nextQuantity: renewed.subscription.quantity,
+    periodStart: renewed.subscription.current_period_start,
+    periodEnd: renewed.subscription.current_period_end,
+  });
   const changed = await api.subscriptions.changePlan(subscription.id, {
     plan_id: pro.id,
     proration_behavior: 'create_prorations',
   });
   assert.equal(changed.subscription.plan_id, pro.id);
+  assert.equal(changed.proration?.amount_cents, localProration?.amount_cents);
   const seats = await api.subscriptions.updateSeats(subscription.id, {
     quantity: 3,
     proration_behavior: 'create_prorations',
@@ -730,6 +741,30 @@ async function domainLifecycles({ api, organization, product, customer }) {
   });
   assert.ok(canceled.canceled_at);
   passed('subscription lifecycle (create/get/pause/resume/renew/change-plan/seats/cancel)');
+
+  const batch = await createLicensesBatch(
+    api.licenses,
+    [
+      {
+        product_id: product.id,
+        customer_id: customer.id,
+        license_type: 'perpetual',
+        perpetual: true,
+      },
+      {
+        product_id: product.id,
+        customer_id: customer.id,
+        license_type: 'perpetual',
+        perpetual: true,
+      },
+    ],
+    { concurrency: 2 },
+  );
+  assert.deepEqual(
+    batch.map((result) => result.status),
+    ['fulfilled', 'fulfilled'],
+  );
+  passed('bounded batch license issuance');
 
   const planA = await api.commissionPlans.create({
     org_id: organization.id,

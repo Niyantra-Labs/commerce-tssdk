@@ -10,6 +10,9 @@ export type {
   ResponseHookEvent,
   RetryHookEvent,
   TransportHooks,
+  CommerceLogger,
+  MiddlewareRequest,
+  TransportMiddleware,
   RateLimitClock,
 } from './transport.js';
 export * from './errors.js';
@@ -55,11 +58,18 @@ export { OfflineVerifier } from './offline-verifier.js';
 export {
   OfflineCertificateCache,
   MemoryOfflineCertificateStorage,
+  LocalOfflineCertificateStorage,
 } from './offline-certificate-cache.js';
 export type {
   CachedOfflineCertificate,
   OfflineCertificateStorage,
 } from './offline-certificate-cache.js';
 export { isGeneratedLicenseKeyFormat } from './license-key.js';
+export { settleBatch, createLicensesBatch } from './batch.js';
+export type { BatchOptions } from './batch.js';
+export { generateMachineFingerprint } from './fingerprint.js';
+export type { FingerprintInput } from './fingerprint.js';
+export { calculateProration } from './proration.js';
+export type { ProrationInput, ProrationPlan } from './proration.js';
 export { toDate, asResult } from './utils.js';
 export type { Result } from './utils.js';

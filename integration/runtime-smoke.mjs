@@ -24,7 +24,7 @@ import process from 'node:process';
 import { setTimeout } from 'node:timers';
 import { fileURLToPath, pathToFileURL, URL } from 'node:url';
 import { promisify } from 'node:util';
-import { Client } from '../dist/index.js';
+import { Client, generateMachineFingerprint } from '../dist/index.js';
 
 const execFileAsync = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -96,7 +96,8 @@ async function bootstrap() {
     reset_period: 'monthly',
     billing_model: 'postpaid',
   });
-  const fingerprint = `runtime-machine-${runId}`;
+  const fingerprintInput = { namespace: 'runtime-smoke', components: { machine: runId } };
+  const fingerprint = await generateMachineFingerprint(fingerprintInput);
   const activated = await anonymous.activations.activate({
     license_key: license.license_key,
     fingerprint,
@@ -138,6 +139,7 @@ async function bootstrap() {
     licenseKey: license.license_key,
     featureKey,
     fingerprint,
+    fingerprintInput,
     certificate: issued.certificate.certificate,
     signature: issued.signature,
     webhook: {

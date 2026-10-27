@@ -33,6 +33,44 @@ export class MemoryOfflineCertificateStorage implements OfflineCertificateStorag
   }
 }
 
+/** Browser persistence. Supply a Storage explicitly and use it only for trusted devices. */
+export class LocalOfflineCertificateStorage implements OfflineCertificateStorage {
+  constructor(
+    private readonly storage: Storage,
+    private readonly prefix = 'niyantra:offline:',
+  ) {}
+
+  get(key: string): Promise<CachedOfflineCertificate | undefined> {
+    const raw = this.storage.getItem(this.prefix + key);
+    if (raw === null) return Promise.resolve(undefined);
+    try {
+      const value: unknown = JSON.parse(raw);
+      if (
+        value &&
+        typeof value === 'object' &&
+        'certificate' in value &&
+        'signature' in value &&
+        typeof value.certificate === 'string' &&
+        typeof value.signature === 'string'
+      )
+        return Promise.resolve({ certificate: value.certificate, signature: value.signature });
+    } catch {
+      // Storage is untrusted; malformed entries are treated as absent.
+    }
+    return Promise.resolve(undefined);
+  }
+
+  set(key: string, value: CachedOfflineCertificate): Promise<void> {
+    this.storage.setItem(this.prefix + key, JSON.stringify(value));
+    return Promise.resolve();
+  }
+
+  delete(key: string): Promise<void> {
+    this.storage.removeItem(this.prefix + key);
+    return Promise.resolve();
+  }
+}
+
 /**
  * Verifies the Ed25519 signature, fingerprint, and expiry on every read.
  * It never treats storage contents as trusted. A local cache cannot discover

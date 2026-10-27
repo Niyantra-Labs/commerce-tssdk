@@ -3,7 +3,14 @@ import { CommerceProtocolError } from '../errors.js';
 import type { RequestOptions, ResponseKind } from '../transport.js';
 import { pathSegment, Transport } from '../transport.js';
 
-/** Shared read/list behavior for a collection. */
+/**
+ * Shared read/list behavior for a collection.
+ * @example
+ * ```ts
+ * const firstPage = await client.products.list({ limit: 25 });
+ * for await (const product of client.products.listAll({ limit: 25 })) use(product);
+ * ```
+ */
 export class CollectionService<R, List extends PageParams = PageParams, Detail = R> {
   constructor(
     protected readonly http: Transport,
@@ -67,7 +74,14 @@ export class CollectionService<R, List extends PageParams = PageParams, Detail =
   }
 }
 
-/** Standard CRUD behavior; only use for routes that implement all five operations. */
+/**
+ * Standard CRUD behavior; only use for routes that implement all five operations.
+ * @example
+ * ```ts
+ * const product = await client.products.create({ org_id, name: 'App', slug: 'app', product_type: 'saas' });
+ * await client.products.update(product.id, { name: 'App 2' });
+ * ```
+ */
 export class ResourceService<
   R,
   // Public CRUD input parameters bind service methods to generated wire types.

@@ -10,6 +10,7 @@ import {
   CommerceAbortError,
   CommerceApiError,
   CommerceNetworkError,
+  generateMachineFingerprint,
   OfflineVerifier,
   WebhookVerifier,
 } from '../../dist/index.js';
@@ -41,6 +42,11 @@ export async function runChecks(config, runtime) {
 
   await check('health over fetch (unprefixed, unauthenticated)', async () => {
     assert((await anonymous.system.health()).status === 'ok', 'health is not ok');
+  });
+
+  await check('machine fingerprint matches server-issued certificate across runtimes', async () => {
+    const fingerprint = await generateMachineFingerprint(config.fingerprintInput);
+    assert(fingerprint === config.fingerprint, 'fingerprint differs by runtime');
   });
 
   await check('license validation (public route)', async () => {

@@ -1,5 +1,5 @@
 import type * as M from './models/generated.js';
-import { Transport, type ClientOptions } from './transport.js';
+import { Transport, type ClientOptions, type TransportMiddleware } from './transport.js';
 import { ResourceService } from './services/base.js';
 import { UsageReporter } from './usage-reporter.js';
 import {
@@ -50,6 +50,23 @@ export class Client {
   private readonly http: Transport;
   constructor(options: ClientOptions) {
     this.http = new Transport(options);
+  }
+
+  /**
+   * Add metadata-only request/response middleware. Register before sending requests.
+   *
+   * @example
+   * ```ts
+   * client.use(async (request, next) => {
+   *   const result = await next(request);
+   *   audit(request.method, request.path);
+   *   return result;
+   * });
+   * ```
+   */
+  use(middleware: TransportMiddleware): this {
+    this.http.use(middleware);
+    return this;
   }
 
   /** Organizations (tenants). Org-scoped keys see only their own; creating and deleting organizations is operator-only. */
