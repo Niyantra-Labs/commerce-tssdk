@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import console from 'node:console';
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
@@ -39,6 +39,12 @@ try {
 
   writeFileSync(join(work, 'package.json'), JSON.stringify({ name: 'consumer', private: true }));
   runNpm(['install', '--no-audit', '--no-fund', `./${tarball}`]);
+  const scope = join(work, 'node_modules', '@niyantra');
+  mkdirSync(scope, { recursive: true });
+  for (const companion of ['otel', 'node-storage'])
+    cpSync(join(root, 'packages', companion), join(scope, `commerce-${companion}`), {
+      recursive: true,
+    });
   const typescript = join(root, 'node_modules/typescript/lib/tsc.js');
 
   writeFileSync(
@@ -64,7 +70,15 @@ if (typeof new Client({ auth: { apiKey: 'k' } }).licenses.list !== 'function') t
   writeFileSync(
     join(work, 'consumer.ts'),
     `import { Client, CommerceApiError, type License, type ListResponse, type ReleaseDownload } from '@niyantra/commerce';
+import { createOtelHooks } from '@niyantra/commerce-otel';
+import { FileOfflineCertificateStorage } from '@niyantra/commerce-node-storage';
 const client = new Client({ baseUrl: 'https://commerce.example.com', auth: { apiKey: 'k' } });
+const storage = new FileOfflineCertificateStorage('/tmp/certificates');
+void storage.get('machine');
+void createOtelHooks({
+  tracer: { startSpan: () => ({ end() {} }) },
+  meter: { createCounter: () => ({ add() {} }), createHistogram: () => ({ record() {} }) },
+});
 export async function firstLicense(): Promise<License | undefined> {
   const page: ListResponse<License> = await client.licenses.list({ limit: 1 });
   return page.data[0];

@@ -1,0 +1,21 @@
+{
+  "name": "@niyantra/commerce-node-storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Node filesystem adapter for Niyantra Commerce offline certificate cache",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.mjs"
+    }
+  },
+  "peerDependencies": {
+    "@niyantra/commerce": "^0.1.0"
+  },
+  "files": [
+    "index.mjs",
+    "index.d.ts",
+    "README.md"
+  ]
+}

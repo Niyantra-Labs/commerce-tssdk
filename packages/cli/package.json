@@ -1,0 +1,17 @@
+{
+  "name": "@niyantra/commerce-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only CLI for exploring the Niyantra Commerce API",
+  "bin": {
+    "niyantra-commerce": "./bin/niyantra-commerce.mjs"
+  },
+  "dependencies": {
+    "@niyantra/commerce": "0.1.0"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ]
+}
