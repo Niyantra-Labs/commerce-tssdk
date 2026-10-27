@@ -240,39 +240,39 @@ Each service is a class (or object literal with methods) that shares a reference
 
 ### 3.1 Observability
 
-- [ ] Pluggable logger interface (`{ debug, info, warn, error }`) — defaults to no-op
-- [ ] Request/response debug events gated behind a `debug: true` option
+- [x] Pluggable logger interface (`{ debug, info, warn, error }`) — optional `ClientOptions.logger`; absent logger is silent, and logger failures cannot affect HTTP requests (`test/phase3-transport.test.ts`)
+- [x] Request/response debug events gated behind a `debug: true` option — the logger sees only frozen, redacted attempt metadata; hooks remain independent
 - [x] Request timing metrics exposed via `onResponse` callback — `ResponseHookEvent` has `durationMs` and one-based `attempt`; retries so far are `attempt - 1` (`src/transport.ts`, `test/hooks-observability.test.ts`)
 - [x] Retry attempt events — `onRetry` reports reason, delay, attempt, and duration before backoff (`src/transport.ts`, hook tests)
-- [ ] OpenTelemetry integration via a thin adapter in a separate `@niyantra/commerce-otel` package so the core stays dependency-free
+- [x] OpenTelemetry integration via a thin adapter in separate private `packages/otel`; injected tracer/meter, zero core runtime dependencies (`test/phase3-otel.test.mjs`). Publishing the companion package remains a release decision.
 
 ### 3.2 Advanced Client Features
 
-- [ ] Middleware chain — `client.use((req, next) => next(req))` for request/response interception
-- [ ] Custom header injection per-request via the method options bag
+- [x] Middleware chain — `client.use((req, next) => next(req))` wraps request/response processing with frozen, redacted method/path metadata; it may replace a result but cannot alter signed bytes or headers (`test/phase3-transport.test.ts`)
+- [x] Custom header injection per-request via the method options bag — protected auth, signature, routing, and content headers are rejected; arbitrary values are redacted from errors (`test/phase3-transport.test.ts`)
 - [x] Proxy support through fetch injection — `ClientOptions.fetch` accepts a caller-wrapped implementation; `doc/developer-guide.md` shows the Node-only Undici dispatcher pattern without a runtime dependency
 - [x] Configurable keep-alive via the injectable `fetch` — transport calls injected fetch unbound; the caller controls its agent/dispatcher, with no runtime dependency
-- [~] Configurable `maxRetries`, `backoffMultiplier`, and jitter strategy — `maxRetries` is configured and tested; multiplier and jitter strategy are internal only
-- [ ] Idempotency-Key auto-generation only if the server is verified to honor that header for the specific operation; otherwise do not present it as retry safety
+- [x] Configurable `maxRetries`, `backoffMultiplier`, and `jitter` (`full`, `equal`, `none`) — deterministic retry test covers multiplier/none; `Retry-After` still takes precedence
+- [x] Idempotency-Key auto-generation conditional on server support — intentionally disabled: Commerce handlers do not read a general `Idempotency-Key` request header; usage reports carry their own required body key. Mutations remain single-attempt.
 - [x] Request ID propagation (`X-Request-ID` in + out, exposed on errors as `error.requestId`) — per-call option is sent by transport, response ID reaches `CommerceApiError` and hooks (`test/edge-transport.test.ts`, `test/hooks-observability.test.ts`)
 
 ### 3.3 Developer Experience
 
-- [~] TSDoc examples for all major types and methods — examples added to Client, UsageReporter, WebhookVerifier, OfflineVerifier, defineWebhookHandler, OfflineCertificateCache, and the license-key helper; individual service methods still need examples
+- [~] TSDoc examples for all major types and methods — examples cover Client, middleware, the major billing/licensing service classes, generic collection/CRUD services, batch/fingerprint/proration helpers, and crypto/offline helpers; many individual service methods still need examples
 - [x] Typed webhook event handling — `TypedWebhookEvent` / `isKnownWebhookEvent` narrow confirmed event payloads and preserve unknown future types (`src/webhook-events.ts`, `test/webhook-events.test.ts`, live smoke)
 - [x] `defineWebhookHandler({ secret | secrets, handlers, dedupe? })` factory returning a framework-agnostic `Request` → `Response` handler — unit tests and a real signed `license.issued` delivery in the live smoke; `WebhookDedupe` requires an atomic durable claim
-- [ ] Batch operation helpers (parallel license creation via `Promise.allSettled` with a concurrency limit)
-- [ ] CLI tool (`npx @niyantra/commerce-cli`) for SDK exploration / quick REPL-style calls
+- [x] Batch operation helpers — `createLicensesBatch` uses bounded `settleBatch`/`Promise.allSettled`, preserves input order, never retries writes; unit test and two real licenses in live smoke
+- [~] CLI tool — private `packages/cli` provides read-only health/list/get, credential environment variables, and a loopback package smoke. `npx @niyantra/commerce-cli` awaits maintainer publication; no package was published.
 - [x] `CONTRIBUTING.md` with setup, build, and PR guidelines — local gate, server fixture workflow, and live proof rules
 - [x] Type-level tests using `expect-type` or `tsd` to lock in the public API shape — exact-pinned `expect-type` assertions in `test/type-surface.test.ts` compile under `npm run typecheck`
 
 ### 3.4 Additional Helpers
 
-- [ ] Machine fingerprint generation utility (cross-runtime — hashes stable machine inputs, documents what differs per platform)
+- [x] Machine fingerprint generation utility — versioned SHA-256 of caller-selected, sorted NFC-normalized inputs; no hardware probing or platform-specific values. The runtime smoke uses it for server activation and a signed offline certificate in every tested runtime.
 - [x] License key format validator — `isGeneratedLicenseKeyFormat` matches `commerce/internal/domain/license/repository.go:generateLicenseKey` and a freshly issued key in the live smoke; it does not assert server validity
-- [~] Offline certificate caching helper (pluggable storage: in-memory, `localStorage`, `fs`) — `OfflineCertificateCache` accepts any async storage adapter and includes volatile memory storage; localStorage/fs adapters remain application-owned because of platform and secret-storage policy; re-verification passed against a real certificate
+- [x] Offline certificate caching helper — verified cache plus memory, explicit browser `Storage`, and private Node filesystem adapters; malformed entries are ignored, file writes use mode 0600, and signed data is reverified on read. Browser/filesystem storage remains unencrypted.
 - [x] Webhook event router (type-safe dispatch table) — `defineWebhookHandler` dispatches known typed event handlers and an optional unknown-event fallback
-- [ ] Subscription proration calculator (client-side preview mirroring server math)
+- [x] Subscription proration calculator — `calculateProration` follows Go `calculateProration` subtotal/fraction/rounding and matched a live `changePlan` amount; server mutation response remains authoritative.
 
 ---
 

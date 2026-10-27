@@ -13,6 +13,8 @@ All notable changes to this package are documented here. The format follows [Kee
 - Source coverage reporting and a manually dispatched release workflow with a dry-run default.
 - A framework-neutral typed webhook handler with an optional durable replay store, a server-generated license-key format check, and a pluggable offline certificate cache.
 - Bundle-size and tree-shaking checks, compile-time public API tests, an API declaration report, contributor and security guides, and macOS/Windows CI configuration.
+- Optional redacted debug logger, metadata-only middleware, safe per-call headers, configurable retry backoff, bounded batch issuance, cross-runtime machine fingerprints, local proration previews, and browser offline-certificate storage.
+- Private companion packages for OpenTelemetry hooks, read-only CLI exploration, and Node filesystem certificate storage.
 
 ### Changed
 

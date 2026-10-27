@@ -1,12 +1,14 @@
 # Contributing
 
-The Commerce Go handlers, repositories, and migrations define the wire contract. `spec/todo.md` tracks gaps. Read `doc/developer-guide.md`, `doc/wire-semantics.md`, and `doc/security.md` before changing request handling or cryptography.
+The Commerce Go handlers, repositories, and migrations define the wire contract. `spec/todo.md` tracks gaps. Read `doc/developer-guide.md`, `doc/wire-semantics.md`, `doc/phase3.md`, and `doc/security.md` before changing request handling or cryptography.
 
 ## Setup
 
 Use Node 20 or newer and run `npm ci`. The SDK is ESM-only and has no runtime dependencies. Keep development dependencies exact-pinned and at least 14 days old when adding one.
 
 For live checks, start the sibling Commerce repository with `docker compose -f integration/compose.yml up -d --build`. The SDK expects `http://127.0.0.1:19094`. The `test:runtimes` script reports SKIP for runtimes that are not installed; set `MINIFLARE_DIR` to a Miniflare installation for workerd.
+
+`packages/cli`, `packages/otel`, and `packages/node-storage` are private companion packages. Keep Node built-ins in those packages, never in core `src/`. The package smoke exercises the CLI on loopback and the filesystem storage adapter in a temporary directory.
 
 ## Checks before a pull request
 

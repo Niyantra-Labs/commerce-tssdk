@@ -52,6 +52,8 @@ The optional `rateLimit` is per Client, FIFO, and cancellable. It budgets each f
 
 For a Node-only proxy or keep-alive policy, inject a wrapped fetch and own its dispatcher lifecycle. For example, an application that already depends on Undici can construct a `ProxyAgent` (or `Agent` for connection pooling) and pass `fetch: (input, init) => fetch(input, { ...init, dispatcher } as RequestInit)` to `Client`. The SDK invokes that function unbound and does not ship an agent or a Node dependency. Close the dispatcher when the application shuts down.
 
+Phase 3 extensions—debug logging, metadata-only middleware, safe per-call headers, bounded batch issuance, cross-runtime fingerprints, proration preview, optional telemetry/CLI packages, and offline storage adapters—are documented in [Phase 3 helpers](phase3.md). The server has no general `Idempotency-Key` request contract, so the SDK never generates one or retries a mutation.
+
 ## Cryptography
 
 - **Usage reports**: RFC3339 timestamp; HMAC-SHA256 keyed by the raw API key over `timestamp + "\n" + "POST" + "\n" + "/api/v1/usage/reports" + "\n" + hex(SHA256(body))`; the body is serialized once and sent byte-for-byte after signing; 1–100 reports, 2 MiB.

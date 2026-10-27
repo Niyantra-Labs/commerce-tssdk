@@ -2,7 +2,7 @@
 
 A dependency-free ESM TypeScript client for the Niyantra Commerce HTTP API: licensing, activations, offline certificates, subscriptions, usage metering, orders and invoices, webhooks, referrals and affiliates, payment gateways, notifications, and binary releases.
 
-This package is under Phase 1 development and is **not published**. Every method is contract-tested against the Commerce route handlers; the live smoke exercises representative workflows against a Commerce server (Commerce `30286a8`). See [spec/todo.md](spec/todo.md) for what remains before a release.
+This package is under active development and is **not published**. Every method is contract-tested against the Commerce route handlers; live smokes exercise representative workflows against a Commerce server. See [spec/todo.md](spec/todo.md) for what remains before a release.
 
 ## Quick start
 
@@ -19,7 +19,7 @@ const page = await client.licenses.list({ limit: 25 });
 for (const license of page.data) console.log(license.id, license.status);
 ```
 
-`baseUrl` must be HTTPS, except `localhost`/`127.0.0.1`/`[::1]` for local development. Options: `auth` (exactly one of `{ apiKey }` or `{ bearerToken }`, where `bearerToken` may be a function returning a fresh token per request), `fetch` (inject undici, a test double, or an instrumented fetch), `timeoutMs`, `maxRetries`, and an optional client-side `rateLimit`. Every method takes a final options argument with `signal`, `requestId`, and `timeoutMs`.
+`baseUrl` must be HTTPS, except `localhost`/`127.0.0.1`/`[::1]` for local development. Options: `auth` (exactly one of `{ apiKey }` or `{ bearerToken }`, where `bearerToken` may be a function returning a fresh token per request), `fetch` (inject undici, a test double, or an instrumented fetch), `timeoutMs`, `maxRetries`, `backoffMultiplier`, `jitter`, and an optional client-side `rateLimit`. Every method takes a final options argument with `signal`, `requestId`, `timeoutMs`, and safe custom `headers`.
 
 More examples live in `examples/`: [quick start](examples/quickstart.ts), [pagination](examples/pagination.ts), [usage reporting](examples/usage-reporting.ts), [webhook handler](examples/webhook-handler.ts), [offline verification](examples/offline-verification.ts), [release download](examples/release-download.ts), and [browser use](examples/browser.ts).
 
@@ -41,11 +41,17 @@ For exact JSON, PATCH, integer, response-envelope, and retry rules, see [Wire se
 
 Optional `hooks` on `new Client()` accepts `onRequest`, `onResponse`, and `onRetry` callbacks. Each receives a frozen event with method, collection-level path, attempt number, elapsed milliseconds, and request ID when available; response events add status, and retry events add delay and reason. Events contain no headers, bodies, query values, or credentials. Callbacks run synchronously after serialization and authentication, must be fast, and cannot change or fail a request; returned promises are not awaited. With no hooks, the SDK remains silent. See [Wire semantics](doc/wire-semantics.md#identification-and-observability).
 
+For diagnostic logging, pass `debug: true` and a `logger` with `debug`, `info`, `warn`, and `error` methods. Only `debug` is called, with the same frozen redacted attempt events. The default logger is silent. `client.use(async (request, next) => next(request))` registers middleware around a call; it sees only a frozen method and collection path, can observe or replace the returned result, and must forward the same request object once. It cannot alter headers, query values, bodies, or signed bytes. Per-call `headers` are for ordinary metadata such as `X-Trace-Tag`; auth, signature, content, routing, and idempotency headers are protected. Browser custom headers may require server CORS changes. See [Phase 3 guide](doc/phase3.md) for examples and the optional telemetry adapter.
+
 ## Pagination
 
 `list()` returns one `{ data, total }` page. `listAll()` iterates lazily across pages with the same filters and fails if the server's totals become inconsistent; `collectAll(iterable, cap)` gathers results with an explicit upper bound. List filters are exactly the ones each server handler reads.
 
 For each namespace's authentication, API-key scope, errors, and retry behavior, see [Namespace semantics](doc/namespace-semantics.md).
+
+## Batch and local helpers
+
+`createLicensesBatch(client.licenses, inputs, { concurrency: 4 })` returns `PromiseSettledResult<License>[]` in input order and limits simultaneous issuance. Each mutation is sent once; callers choose how to handle rejected items. `generateMachineFingerprint({ namespace, components })` makes a stable SHA-256 digest from caller-selected attributes without probing hardware. Commerce treats fingerprints as opaque, so use the same inputs and namespace on every activation and offline check. `calculateProration(...)` previews the server's current subscription arithmetic, including seat prices and half-cent rounding; the server mutation result remains authoritative. See [Phase 3 guide](doc/phase3.md).
 
 ## Usage reporting
 
