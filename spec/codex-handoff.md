@@ -1,6 +1,6 @@
 # Codex handoff — `codex/next`
 
-SDK worktree: `/Users/tirumalrao/workspace/niyantra/commerce-tssdk-next`. The branch was not merged, rebased, pushed, or published. No Commerce server or Go SDK files changed; no server worktree was needed.
+SDK worktree: `/Users/tirumalrao/workspace/niyantra/commerce-tssdk-next`. The branch was not merged, rebased, pushed, or published. The continuation below also has a Commerce server branch at `/Users/tirumalrao/workspace/niyantra/commerce-next`; the Go SDK was not edited.
 
 ## Commits and reasons
 
@@ -42,4 +42,23 @@ The fingerprint helper was skipped because Commerce treats the fingerprint as an
 - The last wire/crypto full gate also passed `npm run test:integration` (**48 live assertions**) and `npm run test:runtimes` (**48 assertions** across Node 20/24, Bun, Deno, Chrome, and workerd). Chrome's signed usage report remains blocked by server CORS because `X-Usage-*` request headers are not allowed; the smoke reports this expected limit.
 - `npm audit --audit-level=high` passed but reported **two moderate Vitest development advisories**, `GHSA-qxg6-89mg-rqv8` and `GHSA-xp26-3454-mjgp`. The available fix did not meet the 14-day pin rule when reviewed. Runtime audit reported zero vulnerabilities.
 - `actionlint` v1.7.7 passed both workflows. `git ls-remote` matched action SHAs to tags: checkout v4.2.2 `11bd71901bbe5b1630ceea73d27597364c9af683`, setup-node v4.4.0 `49933ea5288caeca8642d1e84afbd3f7d6820020`, setup-bun v2.2.0 `0c5077e51419868618aeaa5fe8019c62421857d6`, setup-deno v2.0.5 `22d081ff2d3a40755e97629de92e3bcbfa7cf2ed`.
-- GitHub Actions did not run here. macOS, Windows, and Node 22 legs remain unverified on their actual runners. The manual release workflow and Codecov upload were not run. No `npm publish` command was run. No Go build/test was needed because no server files changed.
+- GitHub Actions did not run here. macOS, Windows, and Node 22 legs remain unverified on their actual runners. The manual release workflow and Codecov upload were not run. No `npm publish` command was run. At the time of this first report no server files had changed; the continuation below includes server verification.
+
+## Continuation — manual billing live proof (2026-10-28)
+
+### Commits and behavior
+
+- Commerce server `d5a0a39` — allow refunds for captured manual payments without a gateway payment ID, while rejecting pending manual payments and keeping the ID requirement for external providers. This fixes a live `400 refund_failed` response when refunding a fulfilled manual order. `TestMissingRefundPaymentReference` and `TestManualRefundRequiresCapture` cover the guard; the SDK live smoke proves the refund and invoice credit note end to end.
+- SDK `0e3a93b` — exercise manual order create/get/list, reusable checkout instructions, fulfillment, payment refund, and invoice get/issue/PDF/void/list against the real server. Pace requests below the server's 120/minute API-key limit. The notification worker can fail a queued message before the next paced request, so its non-failed retry race is reported as SKIP when no conflict was observable; retry after failure remains checked.
+- SDK `6bc6cc5` — document the manual billing path and offline refund obligation in README, namespace guidance, service TSDoc, and CHANGELOG; reconcile corrective checklist §F live workflow proof. The checklist stays partial because provider-backed checkout/refund and some route fixtures are unverified.
+- The final handoff commit records these results.
+
+Manual checkout returns offline instructions and no hosted URL. Fulfillment records collection and pays the invoice. A manual refund records the payment status and credit note, but Commerce does not transfer money; the operator must return funds separately. Pending manual payments now fail refund with 400. No migration or environment variable is required. Deploy the server fix before relying on manual refunds through the SDK.
+
+### Verification and limits
+
+- Rebuilt the Commerce Docker builder from `commerce-next`; `docker run --rm commerce-builder go test ./...` passed. Rebuilt and started the live app with a temporary Compose override pointing at the server worktree; the tracked Compose file and its original build context were never edited. `/health` passed.
+- `npm run test:integration` passed **54 live assertions**, including pending manual refund rejection and partial refund plus credit note. One unrelated notification non-failed retry subcheck reported SKIP because the worker failed the queued message first.
+- `npm run test:runtimes` passed **48 checks** across Node 20/24, Bun, Deno, Chrome, and workerd. Chrome signed usage reporting remains blocked by the documented `X-Usage-*` CORS limit.
+- The SDK gate passed: build, typecheck, 320 tests, zero-warning lint, fmt:check, docs, contract:check, package consumer smoke, coverage (**92.39% statements; 86.77% branches**), bundle budget, API report, `npm audit --omit=dev` (**zero vulnerabilities**), and `git diff --check`. `npm pack --dry-run --json` contained **51 files**, all under `dist/` or the allowed LICENSE, README.md, and package.json paths.
+- External provider checkout/refund was not exercised to avoid sending credentials to third parties. GitHub Actions, macOS/Windows runners, and Node 22 were not run. No npm publish, push, merge, or rebase was attempted.
