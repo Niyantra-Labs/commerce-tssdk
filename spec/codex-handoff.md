@@ -62,3 +62,23 @@ Manual checkout returns offline instructions and no hosted URL. Fulfillment reco
 - `npm run test:runtimes` passed **48 checks** across Node 20/24, Bun, Deno, Chrome, and workerd. Chrome signed usage reporting remains blocked by the documented `X-Usage-*` CORS limit.
 - The SDK gate passed: build, typecheck, 320 tests, zero-warning lint, fmt:check, docs, contract:check, package consumer smoke, coverage (**92.39% statements; 86.77% branches**), bundle budget, API report, `npm audit --omit=dev` (**zero vulnerabilities**), and `git diff --check`. `npm pack --dry-run --json` contained **51 files**, all under `dist/` or the allowed LICENSE, README.md, and package.json paths.
 - External provider checkout/refund was not exercised to avoid sending credentials to third parties. GitHub Actions, macOS/Windows runners, and Node 22 were not run. No npm publish, push, merge, or rebase was attempted.
+
+## Phase 3 SDK continuation (2026-10-28)
+
+### Commits and behavior
+
+- SDK `b1ae479` — adds redacted debug logging, metadata-only middleware, protected per-call custom headers, configurable retry multiplier/jitter, bounded license batch issuance, cross-runtime machine fingerprint generation, proration preview, browser offline storage, tests, live/runtime checks, and the updated API report. The middleware can observe or replace a result but cannot alter a request or signed bytes. Invalid header bytes now yield a generic `CommerceValidationError` without echoing the value.
+- SDK `fca8eb9` — adds private companion packages for an injected OpenTelemetry tracer/meter, a read-only CLI, and Node filesystem offline storage. The package smoke runs the CLI and file adapter on loopback and typechecks companion declarations with the packed SDK under NodeNext and bundler resolution. The core SDK retains zero runtime dependencies and web-only globals.
+- SDK `97b0147` — documents the extensions in README, `doc/phase3.md`, wire/developer guides, CONTRIBUTING, and CHANGELOG, and reconciles Phase 3 checklist §3.1–§3.4 with proof.
+- SDK `a06f948` — adds TSDoc examples to major billing/licensing methods and option types, closing the Phase 3 documentation item after TypeDoc and the API report passed.
+- The final handoff commit records this report.
+
+No Commerce server code or migration changed in this round. Server handlers do not read a general `Idempotency-Key` request header (the usage report key is in its signed body), so automatic header generation remains disabled and mutations remain single-attempt. The fingerprint helper hashes caller-selected stable inputs; Commerce treats the result as an opaque string. The proration helper previews current Go arithmetic, while the mutation response remains authoritative.
+
+### Verification and remaining limits
+
+- `npm run test:integration` passed **55 live assertions** against the loopback Commerce stack, including a local proration amount matching `changePlan` and two licenses issued through the bounded batch helper. The unrelated notification worker race reported one SKIP as described above.
+- `npm run test:runtimes` passed **54 checks** across Node 20/24, Bun, Deno, Chrome, and workerd. Each runtime regenerated the fingerprint used for a real activation and server-signed offline certificate. Browser signed usage reporting remained blocked by the known `X-Usage-*` CORS rule.
+- The final local gate passed: build, typecheck, **333 tests**, zero-warning lint, fmt:check, docs, contract:check, package consumer smoke, coverage (**91.97% statements, 85.8% branches, 96.97% functions, 93.85% lines**), bundle check (**11,145 gzip bytes full SDK; 678 PlanService-only**), API report, and `npm audit --omit=dev` (**zero vulnerabilities**). `npm pack --dry-run --json` contained **60 files**, all under `dist/` or the allowed LICENSE, README.md, and package.json paths. The API report uses CRLF; `git -c core.whitespace=cr-at-eol diff --check` passed for the updated report.
+- `spec/todo.md` marks all implemented Phase 3 items complete with evidence, including TSDoc on the major public types, service classes, and key methods. The CLI remains partial as an `npx` command because all packages stay private and no publish was authorized; its local command and package smoke passed. The optional OTel adapter was tested with injected tracer/meter doubles, not a production exporter.
+- GitHub Actions, external telemetry backends, macOS/Windows runners, Node 22, and a published `npx` installation were not run. No npm publish, push, merge, or rebase was attempted. No new deployment migration or environment variable is required.
