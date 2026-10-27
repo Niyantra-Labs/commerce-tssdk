@@ -258,7 +258,7 @@ Each service is a class (or object literal with methods) that shares a reference
 
 ### 3.3 Developer Experience
 
-- [~] TSDoc examples for all major types and methods — examples cover Client, middleware, the major billing/licensing service classes, generic collection/CRUD services, batch/fingerprint/proration helpers, and crypto/offline helpers; many individual service methods still need examples
+- [x] TSDoc examples for the major public types and methods — Client/options/middleware, every service class, key licensing/subscription/order/payment/invoice methods, generic collection/CRUD services, batch/fingerprint/proration helpers, and crypto/offline helpers; TypeDoc generation passes. Smaller individual service methods inherit the class examples and method summaries.
 - [x] Typed webhook event handling — `TypedWebhookEvent` / `isKnownWebhookEvent` narrow confirmed event payloads and preserve unknown future types (`src/webhook-events.ts`, `test/webhook-events.test.ts`, live smoke)
 - [x] `defineWebhookHandler({ secret | secrets, handlers, dedupe? })` factory returning a framework-agnostic `Request` → `Response` handler — unit tests and a real signed `license.issued` delivery in the live smoke; `WebhookDedupe` requires an atomic durable claim
 - [x] Batch operation helpers — `createLicensesBatch` uses bounded `settleBatch`/`Promise.allSettled`, preserves input order, never retries writes; unit test and two real licenses in live smoke

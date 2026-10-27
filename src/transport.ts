@@ -100,7 +100,7 @@ export type Authentication =
   | { apiKey: string; bearerToken?: never }
   | { apiKey?: never; bearerToken: string | (() => string | Promise<string>) };
 
-/** Options for `new Client()`. */
+/** Options for `new Client()`. @example `new Client({ auth: { apiKey }, debug: true, logger })` */
 export interface ClientOptions {
   /** Server origin, optionally with a base path. HTTPS is required except for localhost. */
   baseUrl?: string;
@@ -126,7 +126,7 @@ export interface ClientOptions {
   auth: Authentication;
 }
 
-/** Per-call options accepted as the last argument of every method. */
+/** Per-call options accepted as the last argument of every method. @example `client.products.list(undefined, { signal, requestId })` */
 export interface RequestOptions {
   /** Cancels the request, any retry backoff, and a streamed body while it is read. */
   signal?: AbortSignal;

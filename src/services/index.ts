@@ -77,7 +77,7 @@ export class LicenseService extends CollectionService<M.License, M.LicenseListPa
   constructor(http: Transport) {
     super(http, '/licenses');
   }
-  /** Issue one license. */
+  /** Issue one license. @example `const license = await client.licenses.create({ product_id, customer_id })` */
   create(input: M.LicenseCreateParams, options?: RequestOptions): Promise<M.License> {
     return this.http.request(
       { method: 'POST', path: '/licenses', body: input, kind: 'data' },
@@ -304,7 +304,7 @@ export class SubscriptionService extends CollectionService<
   ): Promise<M.Subscription> {
     return this.action(id, 'cancel', input, options);
   }
-  /** Move to another plan of the same product; the result includes the proration the server computed. */
+  /** Move to another plan of the same product; the result includes the proration the server computed. @example `await client.subscriptions.changePlan(id, { plan_id: nextPlanId })` */
   changePlan(
     id: string,
     input: M.SubscriptionChangePlanParams,
@@ -366,7 +366,7 @@ export class OrderService {
       options,
     );
   }
-  /** Create an order with its line items. */
+  /** Create an order with its line items. @example `await client.orders.create({ customer_id, product_id, plan_id, order_type: 'new', gateway: 'manual' })` */
   create(input: C.OrderCreateInput, options?: RequestOptions): Promise<C.OrderCreateResult> {
     return this.http.request(
       { method: 'POST', path: '/orders', body: input, kind: 'data' },
@@ -380,7 +380,7 @@ export class OrderService {
       options,
     );
   }
-  /** Create or reuse checkout instructions. Manual orders return offline collection instructions with no hosted URL. */
+  /** Create or reuse checkout instructions. Manual orders return offline collection instructions with no hosted URL. @example `await client.orders.checkout(orderId)` */
   checkout(id: string, options?: RequestOptions): Promise<Record<string, unknown>> {
     return this.http.request(
       { method: 'POST', path: `/orders/${pathSegment(id)}/checkout`, kind: 'data' },
@@ -428,7 +428,7 @@ export class PaymentService {
       options,
     );
   }
-  /** Refund all or part of a captured payment. Manual refunds record the offline action; the operator must return funds separately. */
+  /** Refund all or part of a captured payment. Manual refunds record the offline action; the operator must return funds separately. @example `await client.payments.refund(id, { amount_cents: 400, reason: 'return' })` */
   refund(id: string, input: M.PaymentRefundParams, options?: RequestOptions): Promise<M.Payment> {
     return this.http.request(
       { method: 'POST', path: `/payments/${pathSegment(id)}/refund`, body: input, kind: 'data' },
@@ -491,7 +491,7 @@ export class InvoiceService {
       options,
     );
   }
-  /** The invoice PDF as a raw `Response`. */
+  /** The invoice PDF as a raw `Response`. @example `const pdf = await client.invoices.pdf(invoiceId)` */
   pdf(id: string, options?: RequestOptions): Promise<Response> {
     return this.http.request(
       { method: 'GET', path: `/invoices/${pathSegment(id)}/pdf`, kind: 'raw' },
