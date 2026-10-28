@@ -44,4 +44,23 @@ describe('paginated ReadableStream adapter', () => {
     signal.abort();
     await expect(reading).rejects.toBeInstanceOf(CommerceAbortError);
   });
+
+  it('aborts an active page fetch when the reader is cancelled', async () => {
+    let observedSignal: AbortSignal | undefined;
+    const fetcher = vi.fn((_input: URL | RequestInfo, init?: RequestInit) => {
+      observedSignal = init?.signal ?? undefined;
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(new DOMException('aborted', 'AbortError')),
+        );
+      });
+    });
+    const client = new Client({ auth: { apiKey: 'sk_stream' }, fetch: fetcher as typeof fetch });
+    const reader = client.products.streamAll().getReader();
+    const reading = reader.read();
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+    await reader.cancel();
+    expect(observedSignal?.aborted).toBe(true);
+    expect((await reading).done).toBe(true);
+  });
 });

@@ -73,7 +73,10 @@ export class CollectionService<R, List extends PageParams = PageParams, Detail =
     }
   }
 
-  /** Stream paginated items with backpressure. Each server page is still decoded as JSON. */
+  /**
+   * Stream paginated items with backpressure. Each server page is still decoded as JSON.
+   * @example `const reader = client.products.streamAll({ limit: 25 }).getReader()`
+   */
   streamAll(params?: List, options?: RequestOptions): ReadableStream<R> {
     const abort = new AbortController();
     const onAbort = () => {

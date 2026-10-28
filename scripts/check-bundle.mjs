@@ -36,6 +36,14 @@ for (const unrelatedRoute of ['/payment-methods', '/gateway-configs', '/webhook-
 }
 assert.ok(plan.gzipBytes < full.gzipBytes / 3, 'Plan-only bundle is unexpectedly large');
 
+const worker = await build({
+  ...options,
+  entryPoints: ['examples/cloudflare-worker.ts'],
+});
+const workerBytes = worker.outputFiles[0]?.contents;
+assert.ok(workerBytes, 'Worker template produced no bundle');
+assert.ok(!new TextDecoder().decode(workerBytes).includes('node:'), 'Worker bundle uses Node APIs');
+
 console.log(
-  `Full SDK: ${full.gzipBytes} gzip bytes; PlanService only: ${plan.gzipBytes} gzip bytes`,
+  `Full SDK: ${full.gzipBytes} gzip bytes; PlanService only: ${plan.gzipBytes} gzip bytes; Worker template: ${gzipSync(workerBytes).length} gzip bytes`,
 );
