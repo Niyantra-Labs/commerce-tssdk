@@ -43,6 +43,21 @@ jobs:
       - run: npm run fmt:check
       - run: npm test
       - run: npm run coverage
+      - name: Check Codecov configuration
+        id: codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '24'
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -n "$CODECOV_TOKEN" ]; then echo 'enabled=true' >> "$GITHUB_OUTPUT"; fi
+      - name: Upload coverage when configured
+        if: steps.codecov.outputs.enabled == 'true'
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: true
       - run: npm run docs
       - run: npm run test:bundle
       - run: npm run test:api
