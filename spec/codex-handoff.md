@@ -82,3 +82,22 @@ No Commerce server code or migration changed in this round. Server handlers do n
 - The final local gate passed: build, typecheck, **333 tests**, zero-warning lint, fmt:check, docs, contract:check, package consumer smoke, coverage (**91.97% statements, 85.8% branches, 96.97% functions, 93.85% lines**), bundle check (**11,145 gzip bytes full SDK; 678 PlanService-only**), API report, and `npm audit --omit=dev` (**zero vulnerabilities**). `npm pack --dry-run --json` contained **60 files**, all under `dist/` or the allowed LICENSE, README.md, and package.json paths. The API report uses CRLF; `git -c core.whitespace=cr-at-eol diff --check` passed for the updated report.
 - `spec/todo.md` marks all implemented Phase 3 items complete with evidence, including TSDoc on the major public types, service classes, and key methods. The CLI remains partial as an `npx` command because all packages stay private and no publish was authorized; its local command and package smoke passed. The optional OTel adapter was tested with injected tracer/meter doubles, not a production exporter.
 - GitHub Actions, external telemetry backends, macOS/Windows runners, Node 22, and a published `npx` installation were not run. No npm publish, push, merge, or rebase was attempted. No new deployment migration or environment variable is required.
+
+## Phase 4 SDK continuation (2026-10-28)
+
+### Commits and user-visible changes
+
+- SDK `a7efbb6` — pins Changesets CLI 2.31.1, configures private-package version planning without tagging, adds version/status scripts, and records a minor release note for the Phase 3 public API additions. The installed version was published on 2026-07-15, more than 14 days before this work.
+- SDK `e572255` — requires a changeset relative to the PR base commit in CI. The checkout fetches full history for that comparison. Documentation-only PRs can carry an empty changeset.
+- SDK `ef466f9` — emits LCOV coverage and conditionally uploads it from the Node 24 Ubuntu job when `CODECOV_TOKEN` is configured. The Codecov action SHA `5975040f7f7d40edaff8d784b576fd65ae95c073` matched tag v5.5.5 via `git ls-remote`.
+- SDK `7bdbe93` — documents the version/changelog process and Codecov gate, updates the changelog and Phase 4 checklist with evidence.
+- The final handoff commit records this continuation.
+
+There are no SDK runtime behavior or Commerce server changes in this continuation. The only new optional environment setting is the GitHub repository secret `CODECOV_TOKEN`; without it, coverage thresholds run and the upload step skips. No migration is needed. `private: true` remains in `package.json`; publishing remains out of scope.
+
+### Verification and limits
+
+- `npm run changeset:status` passed, planning a minor bump. `npm run changeset:status -- --since=main` passed after the changeset commit; before the committed note it failed for missing release notes as expected. A disposable detached worktree ran `npm run changeset:version` and generated a `0.2.0` `CHANGELOG.md` entry and package version. Changesets did not update `package-lock.json`, so the release guide requires `npm install --package-lock-only` and updating `SDK_VERSION` before the release gate.
+- The full local gate passed: build, typecheck, zero-warning lint, format check, **333 tests**, docs, contract check, package smoke, coverage, bundle check, API report, and `npm audit --omit=dev` (**zero vulnerabilities**). Coverage was **91.97% statements, 85.8% branches, 96.97% functions, 93.85% lines**, and `coverage/lcov.info` was generated. The bundle measured **11,145 gzip bytes full SDK** and **678 bytes PlanService-only**. `npm pack --dry-run --json` contained **60 allowed files** under `dist/` or LICENSE, README.md, and package.json.
+- `actionlint` v1.7.7 passed both workflows. `git ls-remote` matched checkout v4.2.2 and setup-node v4.4.0 to the existing pinned SHAs, and Codecov v5.5.5 to the new SHA. GitHub Actions, the Codecov upload, macOS/Windows runner legs, Node 22, the manual release workflow, and npm publishing were **not run**. No push, merge, or rebase was attempted.
+- No live server or cross-runtime smoke was rerun because this continuation changed only release tooling, coverage output, CI, and documentation. The last live/runtime proof remains the Phase 3 result above.
