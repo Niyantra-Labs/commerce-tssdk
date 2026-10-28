@@ -4,6 +4,10 @@ import { defineWebhookHandler } from '@niyantra/commerce';
 export function createExpressWebhookHandler(options) {
   const handle = defineWebhookHandler(options);
   return async (request, response, next) => {
+    if (request.method !== 'POST') {
+      response.status(405).end();
+      return;
+    }
     if (!(request.body instanceof Uint8Array)) {
       response.status(415).end();
       return;

@@ -89,4 +89,21 @@ describe('private framework webhook adapters', () => {
     );
     expect(status).toBe(415);
   });
+
+  it('returns 405 before checking a non-POST Express body', async () => {
+    let status = 0;
+    const response = {
+      status(code) {
+        status = code;
+        return this;
+      },
+      end() {},
+    };
+    await createExpressWebhookHandler({ secret: 'whsec_framework', handlers: {} })(
+      { method: 'GET', headers: {}, body: undefined },
+      response,
+      () => {},
+    );
+    expect(status).toBe(405);
+  });
 });
