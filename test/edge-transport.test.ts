@@ -263,6 +263,39 @@ describe('response and input edges', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it('redacts bearer supplier exceptions before any request', async () => {
+    const fetcher = vi.fn(async () => json('{"data":{}}'));
+    const secret = 'bearer_secret_from_supplier';
+    const transport = new Transport({
+      auth: {
+        bearerToken: () => {
+          throw new Error(secret);
+        },
+      },
+      fetch: fetcher,
+    });
+    const result = transport.request({ method: 'GET', path: '/items', kind: 'data' });
+    await expect(result).rejects.toBeInstanceOf(CommerceValidationError);
+    await expect(result).rejects.not.toThrow(secret);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('does not expose a getter failure during secret inspection', async () => {
+    const fetcher = vi.fn(async () => json('{"data":{}}'));
+    const secret = 'license_secret_from_getter';
+    let reads = 0;
+    const body = {
+      get note() {
+        if (++reads === 3) throw new Error(secret);
+        return 'safe';
+      },
+    };
+    const result = client(fetcher).request({ method: 'POST', path: '/items', body });
+    await expect(result).rejects.toBeInstanceOf(CommerceValidationError);
+    await expect(result).rejects.not.toThrow(secret);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it('converts ISO-8601 timestamps explicitly', () => {
     expect(toDate('2026-10-25T00:00:00Z').toISOString()).toBe('2026-10-25T00:00:00.000Z');
     expect(() => toDate('2026-10-25')).toThrow(CommerceValidationError);

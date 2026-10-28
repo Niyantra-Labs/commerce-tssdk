@@ -619,19 +619,18 @@ export class Transport {
       }
     }
     const secretValues = new Set<string>();
-    gatherSecrets(spec.body, secretValues);
-    gatherSecrets(spec.query, secretValues);
-    for (const value of Object.values(spec.headers ?? {})) if (value) secretValues.add(value);
-    for (const value of Object.values(options.headers ?? {})) if (value) secretValues.add(value);
-    if (spec.serializedBody) {
-      try {
+    try {
+      gatherSecrets(spec.body, secretValues);
+      gatherSecrets(spec.query, secretValues);
+      for (const value of Object.values(spec.headers ?? {})) if (value) secretValues.add(value);
+      for (const value of Object.values(options.headers ?? {})) if (value) secretValues.add(value);
+      if (spec.serializedBody !== undefined)
         gatherSecrets(JSON.parse(spec.serializedBody), secretValues);
-      } catch {
-        // Exact signed bytes are opaque to the transport.
-      }
+      for (const [key, value] of spec.formData ?? [])
+        if (typeof value === 'string') gatherSecrets(value, secretValues, SECRET_FIELD.test(key));
+    } catch {
+      throw new CommerceValidationError('Request values cannot be inspected');
     }
-    for (const [key, value] of spec.formData ?? [])
-      if (typeof value === 'string') gatherSecrets(value, secretValues, SECRET_FIELD.test(key));
     const timeout = options.timeoutMs ?? this.timeoutMs;
     if (!Number.isFinite(timeout) || timeout <= 0)
       throw new CommerceValidationError('Invalid timeout');
@@ -684,10 +683,16 @@ export class Transport {
         } else {
           controller.signal.throwIfAborted();
           const bearer = this.auth.bearerToken;
-          const token =
-            typeof bearer === 'function'
-              ? await withAbort(Promise.resolve().then(bearer), controller.signal)
-              : bearer;
+          let token: string;
+          try {
+            token =
+              typeof bearer === 'function'
+                ? await withAbort(Promise.resolve().then(bearer), controller.signal)
+                : bearer;
+          } catch {
+            controller.signal.throwIfAborted();
+            throw new CommerceValidationError('Bearer token supplier failed');
+          }
           if (!token) throw new CommerceValidationError('Bearer token is empty');
           credential = token;
           setHeader('Authorization', `Bearer ${token}`);

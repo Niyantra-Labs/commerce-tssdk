@@ -19,6 +19,7 @@ All notable changes to this package are documented here. The format follows [Kee
 - Paginated `ReadableStream` collection adapters, route-manifest-generated MSW handlers, loopback throughput and specialized bundle profiles, a Worker webhook example, and private React/Next/Hono/Express companions.
 - Opt-in retries for other safe-GET 5xx responses, a bounded local rate-limit wait queue, and distinct server/client rate-limit errors.
 - Final-byte validation of JSON request bodies, including custom `toJSON()` output and exact serialized bodies.
+- Sanitized bearer-token supplier and request-body getter failures before network I/O.
 
 ### Changed
 
