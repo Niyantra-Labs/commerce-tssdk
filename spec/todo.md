@@ -282,7 +282,7 @@ Each service is a class (or object literal with methods) that shares a reference
 
 - [x] GitHub Actions workflow: install, typecheck, lint, test, build on the published supported Node versions — .github/workflows/ci.yml: Node 20/22/24 gate (build, typecheck, lint, fmt, test, docs, package smoke, audit, tarball contents); actions pinned to verified SHAs; **not yet run on GitHub**
 - [x] Bun + Deno jobs for runtime compatibility — in the opt-in live job (`RUN_LIVE_CONTRACT`, `COMMERCE_REPO_TOKEN`), not yet run
-- [~] Test coverage reporting via `@vitest/coverage-v8` → codecov — V8 coverage and aggregate thresholds run on every SDK CI matrix leg; Codecov upload remains disabled pending a configured token, with setup documented in `doc/ci.md`.
+- [~] Test coverage reporting via `@vitest/coverage-v8` → codecov — V8 coverage and aggregate thresholds run on every SDK CI matrix leg; a pinned Codecov upload runs on Node 24 Ubuntu only when `CODECOV_TOKEN` is configured. Upload has not run on GitHub.
 - [x] `npm audit --production` on every PR — `npm audit --omit=dev` in CI
 - [x] Dependency vulnerability scanning without a paid service — separate CI job runs npm audit at zero tolerance for runtime dependencies and high-severity threshold for development dependencies; two moderate Vitest dev advisories were reported locally, and no runtime vulnerabilities
 - [~] Cross-platform matrix: ubuntu, macos, windows — configured Node 20/22/24 on Ubuntu and Node 24 on macOS/Windows; `actionlint` 1.7.7 passed, but no GitHub runner execution has occurred
@@ -291,8 +291,8 @@ Each service is a class (or object literal with methods) that shares a reference
 
 > Manual-only release dry-run workflow (`.github/workflows/release.yml`), 0.x semver policy (`doc/release.md`), and a hand-maintained Keep a Changelog file (`CHANGELOG.md`) are in place; `private: true` still blocks a real publish.
 
-- [ ] Semantic versioning with `changesets` (`.changeset/` directory + CI check)
-- [ ] `CHANGELOG.md` auto-generated from changesets
+- [x] Semantic versioning with `changesets` (`.changeset/` directory + CI check) — pinned Changesets CLI 2.31.1 plans a minor bump for the private SDK; PR CI requires a note relative to its base commit.
+- [x] `CHANGELOG.md` auto-generated from changesets — `npm run changeset:version` generated a 0.2.0 entry in a disposable worktree; the maintainer must review historical Unreleased text and sync `SDK_VERSION` before committing a release.
 - [ ] `npm publish` automation on tagged releases (with `NPM_TOKEN` secret)
 - [ ] Provenance publishing (`npm publish --provenance`) for supply-chain trust
 - [ ] Publish `@niyantra/commerce` to npm, verify the published tarball contains only `dist/`, `README.md`, `LICENSE`, `package.json`

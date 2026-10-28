@@ -15,6 +15,7 @@ All notable changes to this package are documented here. The format follows [Kee
 - Bundle-size and tree-shaking checks, compile-time public API tests, an API declaration report, contributor and security guides, and macOS/Windows CI configuration.
 - Optional redacted debug logger, metadata-only middleware, safe per-call headers, configurable retry backoff, bounded batch issuance, cross-runtime machine fingerprints, local proration previews, and browser offline-certificate storage.
 - Private companion packages for OpenTelemetry hooks, read-only CLI exploration, and Node filesystem certificate storage.
+- Changeset-based version planning and changelog generation, with a pull-request release-note check and token-gated Codecov upload.
 
 ### Changed
 
