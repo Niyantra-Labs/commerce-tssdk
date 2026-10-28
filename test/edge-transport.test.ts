@@ -217,6 +217,52 @@ describe('response and input edges', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it('rejects unsafe numbers introduced by toJSON before fetch', async () => {
+    const fetcher = vi.fn(async () => json('{"data":{}}'));
+    const transport = client(fetcher);
+    await expect(
+      transport.request({
+        method: 'POST',
+        path: '/items',
+        body: { toJSON: () => ({ amount_cents: 9007199254740992 }) },
+        kind: 'data',
+      }),
+    ).rejects.toBeInstanceOf(CommerceValidationError);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('rejects unsafe or malformed exact JSON before fetch', async () => {
+    const fetcher = vi.fn(async () => json('{"data":{}}'));
+    const transport = client(fetcher);
+    for (const serializedBody of ['{"amount":9007199254740992}', '{invalid']) {
+      await expect(
+        transport.request({ method: 'POST', path: '/items', serializedBody }),
+      ).rejects.toBeInstanceOf(CommerceValidationError);
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('does not expose a toJSON exception or silently omit its body', async () => {
+    const fetcher = vi.fn(async () => json('{"data":{}}'));
+    const transport = client(fetcher);
+    const secret = 'sk_private_from_serializer';
+    const thrown = transport.request({
+      method: 'POST',
+      path: '/items',
+      body: {
+        toJSON: () => {
+          throw new Error(secret);
+        },
+      },
+    });
+    await expect(thrown).rejects.toBeInstanceOf(CommerceValidationError);
+    await expect(thrown).rejects.not.toThrow(secret);
+    await expect(
+      transport.request({ method: 'POST', path: '/items', body: { toJSON: () => undefined } }),
+    ).rejects.toBeInstanceOf(CommerceValidationError);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it('converts ISO-8601 timestamps explicitly', () => {
     expect(toDate('2026-10-25T00:00:00Z').toISOString()).toBe('2026-10-25T00:00:00.000Z');
     expect(() => toDate('2026-10-25')).toThrow(CommerceValidationError);

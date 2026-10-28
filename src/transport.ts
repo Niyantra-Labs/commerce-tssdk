@@ -181,16 +181,22 @@ function discardBody(response: Response): void {
 const MAX_JSON_BYTES = 8 * 1024 * 1024;
 const MAX_ERROR_BYTES = 4096;
 
-function parseJsonLosslessly(text: string): unknown {
+function hasUnsafeJsonNumber(text: string): boolean {
   const tokens = /"(?:\\.|[^"\\])*"|(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
   for (const match of text.matchAll(tokens)) {
     if (match[1] !== undefined) {
       const value = Number(match[1]);
       if (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value))) {
-        throw new CommerceProtocolError('Response contains an unsafe JSON number');
+        return true;
       }
     }
   }
+  return false;
+}
+
+function parseJsonLosslessly(text: string): unknown {
+  if (hasUnsafeJsonNumber(text))
+    throw new CommerceProtocolError('Response contains an unsafe JSON number');
   return JSON.parse(text) as unknown;
 }
 
@@ -591,8 +597,26 @@ export class Transport {
     if (spec.formData && (spec.serializedBody !== undefined || spec.body !== undefined))
       throw new CommerceValidationError('A request has either a JSON or a multipart body');
     if (body === undefined && spec.body !== undefined) {
-      assertSafeNumbers(spec.body);
-      body = JSON.stringify(spec.body);
+      try {
+        assertSafeNumbers(spec.body);
+        // JSON.stringify's type excludes undefined, but toJSON can return it at runtime.
+        const serialized = JSON.stringify(spec.body) as string | undefined;
+        if (serialized === undefined || hasUnsafeJsonNumber(serialized))
+          throw new CommerceValidationError('Request body contains an unsafe JSON value');
+        body = serialized;
+      } catch (error) {
+        if (error instanceof CommerceValidationError) throw error;
+        throw new CommerceValidationError('Request body cannot be serialized');
+      }
+    }
+    if (spec.serializedBody !== undefined) {
+      if (hasUnsafeJsonNumber(spec.serializedBody))
+        throw new CommerceValidationError('Request body contains an unsafe JSON value');
+      try {
+        JSON.parse(spec.serializedBody);
+      } catch {
+        throw new CommerceValidationError('Request body is not valid JSON');
+      }
     }
     const secretValues = new Set<string>();
     gatherSecrets(spec.body, secretValues);
