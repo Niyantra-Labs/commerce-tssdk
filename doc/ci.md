@@ -8,4 +8,6 @@ The Node 24 Ubuntu job emits `coverage/lcov.info` and uploads it to Codecov only
 
 Pull requests run `changeset status --since=<base commit>` after a full checkout. A releasable change needs a `.changeset/*.md` note; for a change that should not bump the package, add an empty changeset. `doc/release.md` explains how a maintainer generates the changelog and version bump.
 
+Every Monday at 06:00 UTC, the scheduled route-drift job checks out Commerce with `COMMERCE_REPO_TOKEN` and compares the server route manifest and generated MSW route list. It fails on a route or envelope change. This does not compare model fields: Commerce does not publish an OpenAPI schema, and the existing one-time Go SDK model bootstrap is not a safe regeneration path. Review model changes against server structs and migrations until a trustworthy schema source exists.
+
 The release workflow is manual and `package.json` remains private. See `doc/release.md` for the human review and dry-run process. No CI workflow should remove `private` from the repository package or publish on push/PR.

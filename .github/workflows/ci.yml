@@ -4,12 +4,15 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
 
 permissions:
   contents: read
 
 jobs:
   sdk:
+    if: github.event_name != 'schedule'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -66,6 +69,7 @@ jobs:
       - run: npm pack --dry-run --json
 
   dependency-scan:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -78,6 +82,31 @@ jobs:
         run: npm audit --omit=dev --audit-level=low
       - name: Reject high severity development dependency vulnerabilities
         run: npm audit --audit-level=high
+
+  scheduled-route-drift:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: commerce-tssdk
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: commerce-tssdk
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: Niyantra-Labs/commerce
+          token: ${{ secrets.COMMERCE_REPO_TOKEN }}
+          path: commerce
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: commerce-tssdk/package-lock.json
+      - run: npm ci
+      - run: npm run contract:check
+      - run: npm run msw:check
 
   live:
     if: github.event_name == 'workflow_dispatch' && vars.RUN_LIVE_CONTRACT == 'true'
