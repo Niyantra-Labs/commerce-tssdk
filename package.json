@@ -54,6 +54,7 @@
     "test:api": "npm run build && api-extractor run --local",
     "changeset:status": "changeset status",
     "changeset:version": "changeset version",
+    "release-note:check": "node scripts/check-release-note.mjs",
     "benchmark:throughput": "npm run build && node scripts/benchmark-throughput.mjs",
     "profile:bundles": "node scripts/profile-bundles.mjs",
     "msw:generate": "node scripts/generate-msw-routes.mjs",
