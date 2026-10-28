@@ -128,6 +128,10 @@ async function main() {
   });
   const orders = await authenticated.orders.list();
   assert.ok(Array.isArray(orders.data));
+  const productStream = authenticated.products.streamAll({ limit: 1 }).getReader();
+  assert.equal((await productStream.read()).value?.id, product.id);
+  await productStream.cancel();
+  passed('product list ReadableStream');
   passed('authenticated orders list');
 
   const license = await client.licenses.create({
