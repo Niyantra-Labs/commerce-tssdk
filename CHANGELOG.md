@@ -17,6 +17,7 @@ All notable changes to this package are documented here. The format follows [Kee
 - Private companion packages for OpenTelemetry hooks, read-only CLI exploration, and Node filesystem certificate storage.
 - Changeset-based version planning and changelog generation, with a pull-request release-note check and token-gated Codecov upload.
 - Paginated `ReadableStream` collection adapters, route-manifest-generated MSW handlers, loopback throughput and specialized bundle profiles, a Worker webhook example, and private React/Next/Hono/Express companions.
+- Opt-in retries for other safe-GET 5xx responses, a bounded local rate-limit wait queue, and distinct server/client rate-limit errors.
 
 ### Changed
 

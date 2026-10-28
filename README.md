@@ -19,7 +19,7 @@ const page = await client.licenses.list({ limit: 25 });
 for (const license of page.data) console.log(license.id, license.status);
 ```
 
-`baseUrl` must be HTTPS, except `localhost`/`127.0.0.1`/`[::1]` for local development. Options: `auth` (exactly one of `{ apiKey }` or `{ bearerToken }`, where `bearerToken` may be a function returning a fresh token per request), `fetch` (inject undici, a test double, or an instrumented fetch), `timeoutMs`, `maxRetries`, `backoffMultiplier`, `jitter`, and an optional client-side `rateLimit`. Every method takes a final options argument with `signal`, `requestId`, `timeoutMs`, and safe custom `headers`.
+`baseUrl` must be HTTPS, except `localhost`/`127.0.0.1`/`[::1]` for local development. Options: `auth` (exactly one of `{ apiKey }` or `{ bearerToken }`, where `bearerToken` may be a function returning a fresh token per request), `fetch` (inject undici, a test double, or an instrumented fetch), `timeoutMs`, `maxRetries`, `retryOther5xx`, `backoffMultiplier`, `jitter`, and an optional client-side `rateLimit`. Every method takes a final options argument with `signal`, `requestId`, `timeoutMs`, and safe custom `headers`.
 
 More examples live in `examples/`: [quick start](examples/quickstart.ts), [pagination](examples/pagination.ts), [usage reporting](examples/usage-reporting.ts), [webhook handler](examples/webhook-handler.ts), [offline verification](examples/offline-verification.ts), [release download](examples/release-download.ts), [browser use](examples/browser.ts), and a [Cloudflare Worker webhook](examples/cloudflare-worker.ts).
 
@@ -33,9 +33,9 @@ API keys are also limited by their **scopes**: `<family>:read` for GET routes an
 
 ## Errors, retries, and cancellation
 
-Failures reject with a typed error: `CommerceApiError` (HTTP error with `status`, `code`, `requestId`, `details`), `CommerceNetworkError`, `CommerceTimeoutError`, `CommerceAbortError`, `CommerceProtocolError` (malformed or unsafe JSON, missing envelope), `CommerceValidationError` (rejected before any request), and `CommerceCryptoError`. Lifecycle actions the server refuses from the current state (for example paying an unapproved payout) are `CommerceApiError` with status `409` and code `invalid_transition`.
+Failures reject with a typed error: `CommerceApiError` (HTTP error with `status`, `code`, `requestId`, `details`), its `CommerceRateLimitError` subtype for a final HTTP 429, `CommerceLocalRateLimitError` when the optional client wait queue is full, `CommerceNetworkError`, `CommerceTimeoutError`, `CommerceAbortError`, `CommerceProtocolError` (malformed or unsafe JSON, missing envelope), `CommerceValidationError` (rejected before any request), and `CommerceCryptoError`. Lifecycle actions the server refuses from the current state (for example paying an unapproved payout) are `CommerceApiError` with status `409` and code `invalid_transition`.
 
-GET requests retry 429/502/503/504 and network failures with bounded jittered backoff, honouring `Retry-After`. Mutations are never retried automatically. A timeout or the caller's `AbortSignal` cancels the request, any backoff, and — for streamed downloads — the body while it is being read. `asResult(promise)` turns a call into a `{ ok, value | error }` result for code that prefers not to throw.
+GET requests retry 429/502/503/504 and network failures with bounded jittered backoff, honouring `Retry-After`. `retryOther5xx: true` opts safe GETs into retries for other HTTP 5xx responses. Mutations are never retried automatically. The optional `rateLimit.maxQueue` caps waiting calls at 1,000 by default (zero disables waiting). A timeout or the caller's `AbortSignal` cancels the request, any backoff, and — for streamed downloads — the body while it is being read. `asResult(promise)` turns a call into a `{ ok, value | error }` result for code that prefers not to throw.
 
 For exact JSON, PATCH, integer, response-envelope, and retry rules, see [Wire semantics](doc/wire-semantics.md).
 

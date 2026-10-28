@@ -1164,8 +1164,10 @@ export interface ClientOptions {
     rateLimit?: {
         requestsPerSecond: number;
         burst?: number;
+        maxQueue?: number;
         clock?: RateLimitClock;
     };
+    retryOther5xx?: boolean;
     timeoutMs?: number;
 }
 
@@ -1216,6 +1218,10 @@ export class CommerceError extends Error {
 }
 
 // @public
+export class CommerceLocalRateLimitError extends CommerceError {
+}
+
+// @public
 export interface CommerceLogger {
     // (undocumented)
     debug(message: string, event: Readonly<RequestHookEvent | ResponseHookEvent | RetryHookEvent>): void;
@@ -1233,6 +1239,10 @@ export class CommerceNetworkError extends CommerceError {
 
 // @public
 export class CommerceProtocolError extends CommerceError {
+}
+
+// @public
+export class CommerceRateLimitError extends CommerceApiError {
 }
 
 // @public

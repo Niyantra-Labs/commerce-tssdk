@@ -1,8 +1,10 @@
 import {
   CommerceAbortError,
   CommerceApiError,
+  CommerceLocalRateLimitError,
   CommerceNetworkError,
   CommerceProtocolError,
+  CommerceRateLimitError,
   CommerceTimeoutError,
   CommerceValidationError,
 } from './errors.js';
@@ -110,12 +112,20 @@ export interface ClientOptions {
   timeoutMs?: number;
   /** Retries for GET requests on 429/502/503/504 and network failures. Mutations are never retried. */
   maxRetries?: number;
+  /** Also retry other HTTP 5xx responses for safe GETs. Default false. */
+  retryOther5xx?: boolean;
   /** Exponential backoff multiplier for safe GET retries (default 2). */
   backoffMultiplier?: number;
   /** Backoff jitter for safe GET retries (default full). Retry-After is always respected. */
   jitter?: 'full' | 'equal' | 'none';
   /** Optional per-client request budget. */
-  rateLimit?: { requestsPerSecond: number; burst?: number; clock?: RateLimitClock };
+  rateLimit?: {
+    requestsPerSecond: number;
+    burst?: number;
+    /** Maximum waiting requests; default 1000. Zero disables waiting. */
+    maxQueue?: number;
+    clock?: RateLimitClock;
+  };
   /** Synchronous, best-effort metadata hooks. Keep callbacks fast; returned promises are not awaited. */
   hooks?: TransportHooks;
   /** Emit redacted attempt events to logger.debug when true. Default false. */
@@ -328,6 +338,7 @@ export class Transport {
   private readonly auth: Authentication;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
+  private readonly retryOther5xx: boolean;
   private readonly backoffMultiplier: number;
   private readonly jitter: 'full' | 'equal' | 'none';
   private readonly hooks: TransportHooks | undefined;
@@ -337,6 +348,7 @@ export class Transport {
   private readonly rateLimit?: {
     intervalMs: number;
     burst: number;
+    maxQueue: number;
     tokens: number;
     lastRefill: number;
     clock: RateLimitClock;
@@ -380,6 +392,7 @@ export class Transport {
     Object.defineProperty(this, 'auth', { enumerable: false });
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.maxRetries = options.maxRetries ?? 2;
+    this.retryOther5xx = options.retryOther5xx ?? false;
     this.backoffMultiplier = options.backoffMultiplier ?? 2;
     this.jitter = options.jitter ?? 'full';
     this.hooks = options.hooks;
@@ -389,6 +402,7 @@ export class Transport {
       const {
         requestsPerSecond,
         burst = 1,
+        maxQueue = 1000,
         clock = { now: Date.now, sleep: wait },
       } = options.rateLimit;
       if (
@@ -396,12 +410,16 @@ export class Transport {
         requestsPerSecond <= 0 ||
         !Number.isFinite(1000 / requestsPerSecond) ||
         !Number.isSafeInteger(burst) ||
-        burst < 1
+        burst < 1 ||
+        !Number.isSafeInteger(maxQueue) ||
+        maxQueue < 0 ||
+        maxQueue > 100000
       )
         throw new CommerceValidationError('Invalid rate limit');
       this.rateLimit = {
         intervalMs: 1000 / requestsPerSecond,
         burst,
+        maxQueue,
         tokens: burst,
         lastRefill: clock.now(),
         clock,
@@ -415,6 +433,7 @@ export class Transport {
       !Number.isInteger(this.maxRetries) ||
       this.maxRetries < 0 ||
       this.maxRetries > 10 ||
+      typeof this.retryOther5xx !== 'boolean' ||
       !Number.isFinite(this.backoffMultiplier) ||
       this.backoffMultiplier < 1 ||
       this.backoffMultiplier > 10 ||
@@ -476,6 +495,8 @@ export class Transport {
         return;
       }
     }
+    if (state.queued >= state.maxQueue)
+      throw new CommerceLocalRateLimitError('Local rate-limit queue is full');
     const previous = state.tail;
     let release!: () => void;
     state.tail = new Promise<void>((resolve) => {
@@ -710,7 +731,8 @@ export class Transport {
         if (
           retryable &&
           attempt < this.maxRetries &&
-          [429, 502, 503, 504].includes(response.status)
+          ([429, 502, 503, 504].includes(response.status) ||
+            (this.retryOther5xx && response.status >= 500 && response.status <= 599))
         ) {
           const delay =
             parseRetryAfter(response.headers.get('retry-after')) ?? this.retryDelay(attempt);
@@ -742,7 +764,8 @@ export class Transport {
             envelope && typeof envelope === 'object'
               ? (envelope as Record<string, unknown>)
               : undefined;
-          throw new CommerceApiError(
+          const ApiError = response.status === 429 ? CommerceRateLimitError : CommerceApiError;
+          throw new ApiError(
             response.status,
             typeof api?.code === 'string'
               ? (redactedView(api.code, secrets) as string)

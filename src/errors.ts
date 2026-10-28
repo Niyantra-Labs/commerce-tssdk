@@ -19,6 +19,9 @@ export class CommerceApiError extends CommerceError {
   }
 }
 
+/** A server HTTP 429 response. Also a CommerceApiError for broad HTTP error handling. */
+export class CommerceRateLimitError extends CommerceApiError {}
+
 /** A successful HTTP response that violates the expected Commerce protocol. */
 export class CommerceProtocolError extends CommerceError {}
 
@@ -30,6 +33,9 @@ export class CommerceAbortError extends CommerceError {}
 
 /** The configured deadline expired. */
 export class CommerceTimeoutError extends CommerceError {}
+
+/** The optional client-side rate-limit wait queue has reached its configured cap. */
+export class CommerceLocalRateLimitError extends CommerceError {}
 
 /** An invalid SDK option or request value. */
 export class CommerceValidationError extends CommerceError {}

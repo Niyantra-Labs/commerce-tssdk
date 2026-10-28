@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CommerceApiError, CommerceProtocolError, Transport } from '../src/index.js';
+import {
+  CommerceApiError,
+  CommerceLocalRateLimitError,
+  CommerceProtocolError,
+  CommerceRateLimitError,
+  Transport,
+} from '../src/index.js';
 
 afterEach(() => vi.useRealTimers());
 
@@ -7,6 +13,63 @@ const transport = (fetcher: typeof fetch, maxRetries = 0) =>
   new Transport({ auth: { apiKey: 'test-key' }, fetch: fetcher, maxRetries });
 
 describe('status and retry boundaries', () => {
+  it('retries other 5xx only when opted in for a safe GET', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn(async () =>
+      fetcher.mock.calls.length === 1
+        ? new Response('{"error":{"code":"internal"}}', {
+            status: 500,
+            headers: { 'content-type': 'application/json' },
+          })
+        : new Response('{"data":1}', { headers: { 'content-type': 'application/json' } }),
+    );
+    const spec = { method: 'GET', path: '/items', kind: 'data' } as const;
+    await expect(transport(fetcher, 1).request(spec)).rejects.toMatchObject({ status: 500 });
+    expect(fetcher).toHaveBeenCalledOnce();
+    fetcher.mockClear();
+    const pending = new Transport({
+      auth: { apiKey: 'test-key' },
+      fetch: fetcher,
+      maxRetries: 1,
+      retryOther5xx: true,
+      jitter: 'none',
+    }).request(spec);
+    await vi.advanceTimersByTimeAsync(500);
+    await expect(pending).resolves.toBe(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a mutation when other 5xx retries are enabled', async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response('{"error":{"code":"internal"}}', {
+          status: 500,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    await expect(
+      new Transport({
+        auth: { apiKey: 'test-key' },
+        fetch: fetcher,
+        retryOther5xx: true,
+      }).request({ method: 'POST', path: '/items', body: {}, kind: 'data' }),
+    ).rejects.toMatchObject({ status: 500 });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it('classifies a final 429 as a rate-limit API error', async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response('{"error":{"code":"rate_limited"}}', {
+          status: 429,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    const result = transport(fetcher).request({ method: 'GET', path: '/items', kind: 'data' });
+    await expect(result).rejects.toBeInstanceOf(CommerceRateLimitError);
+    await expect(result).rejects.toBeInstanceOf(CommerceApiError);
+  });
+
   it.each([202, 204])('accepts %i with no-body response kind', async (status) => {
     const fetcher = vi.fn(async () => new Response(null, { status }));
     await expect(
@@ -73,6 +136,27 @@ describe('status and retry boundaries', () => {
 });
 
 describe('client limiter ordering', () => {
+  it('rejects beyond its configured wait-queue cap', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const fetcher = vi.fn(
+      async () => new Response('{"data":1}', { headers: { 'content-type': 'application/json' } }),
+    );
+    const client = new Transport({
+      auth: { apiKey: 'test-key' },
+      fetch: fetcher,
+      rateLimit: { requestsPerSecond: 1, burst: 1, maxQueue: 1 },
+      timeoutMs: 5000,
+    });
+    const spec = { method: 'GET', path: '/items', kind: 'data' } as const;
+    const first = client.request(spec);
+    const second = client.request(spec);
+    await expect(client.request(spec)).rejects.toBeInstanceOf(CommerceLocalRateLimitError);
+    await vi.advanceTimersByTimeAsync(1000);
+    await expect(Promise.all([first, second])).resolves.toEqual([1, 1]);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
   it('serves queued requests in arrival order and releases an aborted turn', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(0);
