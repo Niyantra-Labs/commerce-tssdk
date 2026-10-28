@@ -1,7 +1,7 @@
 import { CommerceError, CommerceValidationError } from './errors.js';
 
 /** Kept in sync with package.json by the SDK identification test. */
-export const SDK_VERSION = '0.1.0';
+export const SDK_VERSION = '0.2.0';
 
 const INSPECT = Symbol.for('nodejs.util.inspect.custom');
 export const SECRET_FIELD =
