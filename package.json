@@ -51,9 +51,12 @@
     "test:runtimes": "npm run build && node integration/runtime-smoke.mjs",
     "test:package": "npm run build && node integration/package-smoke.mjs && node integration/phase3-package-smoke.mjs",
     "test:bundle": "node scripts/check-bundle.mjs",
-    "test:api": "npm run build && api-extractor run --local"
+    "test:api": "npm run build && api-extractor run --local",
+    "changeset:status": "changeset status",
+    "changeset:version": "changeset version"
   },
   "devDependencies": {
+    "@changesets/cli": "2.31.1",
     "@eslint/js": "^9.0.0",
     "@microsoft/api-extractor": "7.59.4",
     "@types/express": "5.0.6",
