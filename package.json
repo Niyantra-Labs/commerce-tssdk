@@ -53,7 +53,9 @@
     "test:bundle": "node scripts/check-bundle.mjs",
     "test:api": "npm run build && api-extractor run --local",
     "changeset:status": "changeset status",
-    "changeset:version": "changeset version"
+    "changeset:version": "changeset version",
+    "benchmark:throughput": "npm run build && node scripts/benchmark-throughput.mjs",
+    "profile:bundles": "node scripts/profile-bundles.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.1",
