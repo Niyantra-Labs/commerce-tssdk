@@ -1,6 +1,6 @@
 # Release process
 
-The package is currently `0.x` and private. A maintainer must remove `"private": true` from `package.json` after the release blockers in `spec/todo.md` are closed. No workflow can publish while that flag remains.
+The package is currently a private `0.2.0` release candidate. A maintainer must remove `"private": true` from `package.json` after the release blockers in `spec/todo.md` are closed. No workflow can publish while that flag remains. The candidate has passed the local package and live gates, but the GitHub release workflow has not run.
 
 ## Version policy
 
@@ -8,7 +8,7 @@ The package is currently `0.x` and private. A maintainer must remove `"private":
 - `0.x` minor: added public APIs or breaking changes, with the breaking change called out in the changelog. Before `1.0`, minor versions are the compatibility boundary.
 - `1.0.0`: first stable public contract. From then on, use SemVer major for breaking changes, minor for backward-compatible features, and patch for compatible fixes.
 
-Each releasable pull request adds a Markdown file under `.changeset/` with a patch or minor bump and a user-facing summary. `npm run changeset:status` previews the pending bump; CI checks for a changeset relative to the pull request base commit. A documentation-only change can use an empty changeset. A maintainer runs `npm run changeset:version` on a release branch to update `package.json` and the versioned section of `CHANGELOG.md`, then runs `npm install --package-lock-only` to sync the lockfile. Review and commit those changes. The existing hand-written Unreleased history needs review at the first versioning pass so its entries are not duplicated. Changesets versions this private package without tagging or publishing it.
+Each releasable pull request adds a Markdown file under `.changeset/` with a patch or minor bump and a user-facing summary. `npm run changeset:status` previews the pending bump; CI checks for a changeset relative to the pull request base commit. A documentation-only change can use an empty changeset. A release pull request that consumes the notes must instead contain a versioned `CHANGELOG.md` section; `npm run release-note:check -- <base-sha>` checks both paths. A maintainer runs `npm run changeset:version` on a release branch to update `package.json` and the versioned section of `CHANGELOG.md`, then runs `npm install --package-lock-only` to sync the lockfile. Review and commit those changes. The first `0.2.0` candidate consolidated the historical Unreleased entries under its version. Changesets versions this private package without tagging or publishing it.
 
 `src/utils.ts` holds the runtime SDK version constant. Update it to match the versioned `package.json` before the full gate; `test/hooks-observability.test.ts` checks the match. Review generated declarations and the package smoke before tagging.
 
