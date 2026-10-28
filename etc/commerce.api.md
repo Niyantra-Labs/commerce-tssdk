@@ -1186,6 +1186,7 @@ export class CollectionService<R, List extends PageParams = PageParams, Detail =
     listAll(params?: List, options?: RequestOptions): AsyncIterableIterator<R>;
     // (undocumented)
     protected readonly path: string;
+    streamAll(params?: List, options?: RequestOptions): ReadableStream<R>;
 }
 
 // @public

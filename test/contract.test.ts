@@ -197,8 +197,8 @@ describe('service contracts against the server route manifest', () => {
         p = Object.getPrototypeOf(p) as object | null
       ) {
         for (const method of Object.getOwnPropertyNames(p)) {
-          // listAll is shared pagination over list(), covered in transport tests.
-          if (['constructor', 'item', 'action', 'listAll'].includes(method)) continue;
+          // Shared pagination adapters call list(), which has a route case; their behavior has separate tests.
+          if (['constructor', 'item', 'action', 'listAll', 'streamAll'].includes(method)) continue;
           if (!covered.has(`${name}.${method}`)) missing.push(`${name}.${method}`);
         }
       }

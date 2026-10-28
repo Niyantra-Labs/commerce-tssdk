@@ -72,6 +72,42 @@ export class CollectionService<R, List extends PageParams = PageParams, Detail =
       if (offset >= page.total) return;
     }
   }
+
+  /** Stream paginated items with backpressure. Each server page is still decoded as JSON. */
+  streamAll(params?: List, options?: RequestOptions): ReadableStream<R> {
+    const abort = new AbortController();
+    const onAbort = () => {
+      abort.abort();
+    };
+    options?.signal?.addEventListener('abort', onAbort, { once: true });
+    if (options?.signal?.aborted) onAbort();
+    const iterator = this.listAll(params, { ...options, signal: abort.signal });
+    const cleanup = () => options?.signal?.removeEventListener('abort', onAbort);
+    return new ReadableStream<R>(
+      {
+        async pull(controller) {
+          try {
+            const next = await iterator.next();
+            if (next.done) {
+              cleanup();
+              controller.close();
+            } else {
+              controller.enqueue(next.value);
+            }
+          } catch (error) {
+            cleanup();
+            controller.error(error);
+          }
+        },
+        async cancel() {
+          abort.abort();
+          cleanup();
+          await iterator.return?.();
+        },
+      },
+      { highWaterMark: 0 },
+    );
+  }
 }
 
 /**
