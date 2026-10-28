@@ -1,0 +1,23 @@
+{
+  "name": "@niyantra/commerce-react",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional TanStack Query hooks for the Niyantra Commerce SDK",
+  "exports": {
+    ".": {
+      "types": "./index.d.mts",
+      "default": "./index.mjs"
+    }
+  },
+  "peerDependencies": {
+    "@niyantra/commerce": "^0.1.0",
+    "@tanstack/react-query": "^5.102.8",
+    "react": "^19.2.0"
+  },
+  "files": [
+    "index.mjs",
+    "index.d.mts",
+    "README.md"
+  ]
+}
