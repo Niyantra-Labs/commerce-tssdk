@@ -45,4 +45,4 @@ Results preserve input order. The helper does not retry writes or deduplicate li
 
 `OfflineCertificateCache` re-verifies signatures, fingerprint, and expiry on every read. Use `MemoryOfflineCertificateStorage` for volatile state, `LocalOfflineCertificateStorage(localStorage)` for a trusted browser, or the private [`@niyantra/commerce-node-storage` adapter](../packages/node-storage/README.md) for a private Node directory. Browser storage is readable by scripts on the same origin; the file adapter stores unencrypted bytes with mode `0600`. Neither can learn revocations while offline.
 
-The private [`@niyantra/commerce-cli` package](../packages/cli/README.md) offers read-only `health`, `list`, and `get` exploration. It accepts credentials through environment variables, not command arguments. Publishing and `npx` use remain disabled while all packages are private.
+The private [`@niyantra/commerce-cli` package](../packages/cli/README.md) offers read-only `health`, `list`, and `get` exploration. It accepts credentials through environment variables, not command arguments. This companion remains unpublished, so `npx` use is unavailable.

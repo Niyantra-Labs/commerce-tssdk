@@ -1,6 +1,6 @@
 # Niyantra Commerce TypeScript SDK - TODO
 
-> **Implementation status (2026-10-28):** The private `0.2.0` release candidate has a typed HTTP surface, server-derived route contracts, 355 passing tests, live Commerce integration proof, and cross-runtime proof on Node 20/24, Bun, Deno, Chrome, and workerd. The full local gate passed on macOS Node 24 and clean Linux Node 20/22/24 containers. GitHub Actions and publication have not run. The package remains `private: true`, so it is not published or fully release-ready. Commerce handlers and migrations are the wire contract; the Go SDK is a parity reference. The corrective checklist below supersedes conflicting earlier bullets. Historical session notes follow.
+> **Implementation status (2026-10-28):** `@niyantra/commerce@0.2.0` is publicly published on npm. The typed HTTP SDK has server-derived route contracts, 355 passing tests, live Commerce integration proof, and cross-runtime proof on Node 20/24, Bun, Deno, Chrome, and workerd. The full local gate passed on macOS Node 24 and clean Linux Node 20/22/24 containers. The public tarball matched the local SHA-512 preview, contained only 60 allowed files, and installed in a fresh consumer project. GitHub Actions, provenance publishing, and provider-backed payment sandbox flows have not run. Commerce handlers and migrations are the wire contract; the Go SDK is a parity reference. The corrective checklist below supersedes conflicting earlier bullets. Historical session notes follow.
 >
 > **This session's verified changes** (build/typecheck/test/lint/fmt/docs/pack/live-integration all green against a rebuilt Compose stack; full `go test ./...` green in `commerce`):
 >
@@ -174,7 +174,7 @@ Each service is a class (or object literal with methods) that shares a reference
 
 ### 1.6 Documentation
 
-- [~] `README.md`: quick start, auth/tenancy, errors/retries, pagination, usage reporting, webhooks, offline verification, the proven runtime matrix, test commands, known server limitations, and a **generated endpoint table** (203 methods, rendered from the contract cases + server manifest; `test/docs.test.ts` fails when it drifts, `UPDATE_DOCS=1` regenerates). No badge row or install snippet until the package is published.
+- [x] `README.md`: install and quick start, auth/tenancy, errors/retries, pagination, usage reporting, webhooks, offline verification, the proven runtime matrix, test commands, known server limitations, and a **generated endpoint table** (203 methods, rendered from the contract cases + server manifest; `test/docs.test.ts` fails when it drifts, `UPDATE_DOCS=1` regenerates). No badge row is required for the package contract.
 - [x] `doc/developer-guide.md`: source-of-truth hierarchy, model generation rules, the six test layers and when to regenerate fixtures, the live-server and runtime-matrix setup, request-pipeline rules (unbound fetch, non-blocking body discard, streaming abort), retry semantics, crypto contracts, tenant-guard behavior, release checklist.
 - [~] TSDoc on every exported service class and method, every `client.*` namespace, `ClientOptions`/`RequestOptions`/`Authentication`, the verifiers, `UsageReporter`, and helpers (185 added in session 3; behavioral claims checked against the server: status-only returns, public routes, lifecycle 409s, bulk limits). Major public types and methods now have usage examples in TSDoc; per-field docs on the generated models remain open.
 - [x] `typedoc` configuration + generated HTML docs under `.typedoc/` (opt-in via `npm run docs`, excluded from the npm tarball)
@@ -289,13 +289,13 @@ Each service is a class (or object literal with methods) that shares a reference
 
 ### 4.2 Release Management
 
-> Manual-only release workflow (`.github/workflows/release.yml`), 0.x semver policy (`doc/release.md`), and a versioned Keep a Changelog file (`CHANGELOG.md`) are in place; `private: true` still blocks a real publish.
+> Manual-only release workflow (`.github/workflows/release.yml`), 0.x semver policy (`doc/release.md`), and a versioned Keep a Changelog file (`CHANGELOG.md`) are in place. Version `0.2.0` was published directly from the local CLI; the workflow and provenance path remain unverified.
 
-- [x] Semantic versioning with `changesets` (`.changeset/` directory + CI check) — pinned Changesets CLI 2.31.1 generated the private `0.2.0` candidate; PR CI requires a note for ordinary changes and a versioned changelog section for release PRs.
-- [x] Versioned `CHANGELOG.md` from changesets — `npm run changeset:version` generated `0.2.0`; the historical entries were consolidated under that version, and `package-lock.json` and `SDK_VERSION` were synced. Publication remains open.
+- [x] Semantic versioning with `changesets` (`.changeset/` directory + CI check) — pinned Changesets CLI 2.31.1 generated `0.2.0`; PR CI requires a note for ordinary changes and a versioned changelog section for release PRs.
+- [x] Versioned `CHANGELOG.md` from changesets — `npm run changeset:version` generated `0.2.0`; the historical entries were consolidated under that version, and `package-lock.json` and `SDK_VERSION` were synced.
 - [ ] `npm publish` automation on tagged releases (with `NPM_TOKEN` secret)
 - [ ] Provenance publishing (`npm publish --provenance`) for supply-chain trust
-- [ ] Publish `@niyantra/commerce` to npm, verify the published tarball contains only `dist/`, `README.md`, `LICENSE`, `package.json`
+- [x] Publish `@niyantra/commerce@0.2.0` to npm — public registry version and `latest` tag checked; remote SHA-512 integrity matched the local preview, all 60 remote tarball files were allowed, and a fresh npm install imported `Client` and `WebhookVerifier`.
 - [~] Verify `types` / `exports` resolution via `@arethetypeswrong/cli` — `attw` 0.18.5 reports green node10, node16 ESM, and bundler paths; its expected Node 16 CommonJS → ESM warning exits nonzero (ESM-only package, Node >=20)
 
 ### 4.3 Quality Gates
@@ -465,7 +465,7 @@ For **every** listed method: verify exact verb/path, filter map, request and ret
 - [x] Test unsafe retries (write not repeated), safe GET retries, abort before/during fetch/backoff/rate wait, timeout, malformed ID, credential collision, unsafe integers, huge error bodies, missing `data`, signature tampering, webhook replay, clock skew, and secrets redaction — `test/edge-transport.test.ts`, `test/edge-pipeline.test.ts`, `test/transport.test.ts`, `test/webhook.test.ts`, `test/webhook-handler.test.ts`, and `test/edge-redaction.test.ts` cover these paths with injected fetch and clocks.
 - [~] Runtime smoke done for Node 20/24, Bun, Deno, Chrome, and workerd (fetch, abort, Ed25519 + HMAC Web Crypto, live server calls; see §2.5). `npm run test:package` checks tarball contents, ESM import, Node CommonJS `require(esm)`, and strict TypeScript consumers; publint 0.3.25 reported “All good”; Are-the-Types-Wrong 0.18.5 reports green supported ESM paths and an expected Node 16 CommonJS warning. Still open: Firefox, Safari, Vercel Edge, and the new GitHub macOS/Windows CI matrix. Server CORS exposes response `X-Request-ID` (proven in Chrome) and permits `Content-Type`, `Authorization`, `X-Request-ID`, and `X-API-Key`; `X-Org-ID` and `X-Usage-*` request headers remain unavailable to browsers.
 - [~] Document each namespace's actual server semantics, auth/scope, response shape, errors, retry behavior, pagination, date/integer policy, unsupported Go methods, and server compatibility. Use backend-only API-key examples and short-lived browser bearer examples only where supported. State offline-verification status honestly. — `doc/namespace-semantics.md` maps every Client namespace to the server's scope families and shared error/retry rules; README endpoint reference and `doc/wire-semantics.md` cover routes and wire rules; per-field model docs remain open
-- [~] CI gate: lint, strict typecheck, contract and integration tests, supported runtime smoke tests, build, `npm pack`, package/type resolution, dependency audit, and route/parity diff. Publish with semver and provenance only after P0 blockers close and tarball contents/exports are verified. — workflow exists with verified pinned actions; not yet run on GitHub; no publishing
+- [~] CI gate: lint, strict typecheck, contract and integration tests, supported runtime smoke tests, build, `npm pack`, package/type resolution, dependency audit, and route/parity diff. — the local gate and public `0.2.0` package are verified; GitHub workflow execution and provenance publishing remain open.
 
 ### G. Optional enhancements — P2
 

@@ -83,7 +83,6 @@ jobs:
           tarball=$(npm pack --pack-destination "$release_tmp" --silent)
           tar -xzf "$release_tmp/$tarball" -C "$release_tmp"
           cd "$release_tmp/package"
-          npm pkg delete private
           npm publish --dry-run --provenance
       - name: Check publish token
         id: publish_token
