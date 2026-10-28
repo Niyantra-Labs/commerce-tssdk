@@ -21,7 +21,7 @@ for (const license of page.data) console.log(license.id, license.status);
 
 `baseUrl` must be HTTPS, except `localhost`/`127.0.0.1`/`[::1]` for local development. Options: `auth` (exactly one of `{ apiKey }` or `{ bearerToken }`, where `bearerToken` may be a function returning a fresh token per request), `fetch` (inject undici, a test double, or an instrumented fetch), `timeoutMs`, `maxRetries`, `backoffMultiplier`, `jitter`, and an optional client-side `rateLimit`. Every method takes a final options argument with `signal`, `requestId`, `timeoutMs`, and safe custom `headers`.
 
-More examples live in `examples/`: [quick start](examples/quickstart.ts), [pagination](examples/pagination.ts), [usage reporting](examples/usage-reporting.ts), [webhook handler](examples/webhook-handler.ts), [offline verification](examples/offline-verification.ts), [release download](examples/release-download.ts), and [browser use](examples/browser.ts).
+More examples live in `examples/`: [quick start](examples/quickstart.ts), [pagination](examples/pagination.ts), [usage reporting](examples/usage-reporting.ts), [webhook handler](examples/webhook-handler.ts), [offline verification](examples/offline-verification.ts), [release download](examples/release-download.ts), [browser use](examples/browser.ts), and a [Cloudflare Worker webhook](examples/cloudflare-worker.ts).
 
 ## Authentication and tenancy
 
@@ -45,7 +45,7 @@ For diagnostic logging, pass `debug: true` and a `logger` with `debug`, `info`, 
 
 ## Pagination
 
-`list()` returns one `{ data, total }` page. `listAll()` iterates lazily across pages with the same filters and fails if the server's totals become inconsistent; `collectAll(iterable, cap)` gathers results with an explicit upper bound. List filters are exactly the ones each server handler reads.
+`list()` returns one `{ data, total }` page. `listAll()` iterates lazily across pages with the same filters and fails if the server's totals become inconsistent; `collectAll(iterable, cap)` gathers results with an explicit upper bound. `streamAll()` exposes the same paginated items as a backpressured `ReadableStream` and aborts an active page request when cancelled. Each server page is still decoded as one JSON response. List filters are exactly the ones each server handler reads. See [Phase 5 guide](doc/phase5.md) for performance measurements and optional framework companions.
 
 For each namespace's authentication, API-key scope, errors, and retry behavior, see [Namespace semantics](doc/namespace-semantics.md).
 

@@ -16,6 +16,7 @@ All notable changes to this package are documented here. The format follows [Kee
 - Optional redacted debug logger, metadata-only middleware, safe per-call headers, configurable retry backoff, bounded batch issuance, cross-runtime machine fingerprints, local proration previews, and browser offline-certificate storage.
 - Private companion packages for OpenTelemetry hooks, read-only CLI exploration, and Node filesystem certificate storage.
 - Changeset-based version planning and changelog generation, with a pull-request release-note check and token-gated Codecov upload.
+- Paginated `ReadableStream` collection adapters, route-manifest-generated MSW handlers, loopback throughput and specialized bundle profiles, a Worker webhook example, and private React/Next/Hono/Express companions.
 
 ### Changed
 

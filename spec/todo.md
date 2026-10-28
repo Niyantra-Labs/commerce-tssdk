@@ -317,24 +317,24 @@ Each service is a class (or object literal with methods) that shares a reference
 
 - [ ] OpenAPI spec-driven codegen via `openapi-typescript` or a custom pipeline
 - [ ] Auto-generate models from the Commerce server's OpenAPI schema
-- [ ] Sync SDK types with server schema changes on a scheduled CI job
-- [ ] Generated MSW mocks for consumer testing
+- [~] Sync SDK types with server schema changes on a scheduled CI job — a weekly CI job now checks route/envelope and generated MSW drift against Commerce; model-field drift remains manual because the server publishes no trustworthy schema.
+- [~] Generated MSW mocks for consumer testing — private `packages/msw-mocks` generates route handlers from the checked server manifest and requires caller-supplied `Response` fixtures; response schemas are unavailable.
 
 ### 5.2 Performance
 
 - [x] Tree-shaking verification — esbuild `PlanService`-only import is 678 gzip bytes and contains no payment, gateway, or webhook endpoint route literal (`npm run test:bundle`)
-- [ ] Concurrent request throughput benchmarks
-- [ ] Bundle size profiling for the specialized feature surface
-- [ ] Large batch operation optimisation
-- [ ] Response streaming for large lists via `ReadableStream`
+- [x] Concurrent request throughput benchmarks — `npm run benchmark:throughput` measures 200 loopback GETs at concurrency 1/4/16/32 with p50/p95 and requests/s; results and limits in `doc/phase5.md`.
+- [x] Bundle size profiling for the specialized feature surface — `npm run profile:bundles` measures core, webhook, offline, usage, fingerprint, and proration browser bundles; `test:bundle` still enforces the core budget.
+- [~] Large batch operation optimisation — `settleBatch` already bounds concurrent writes; server license bulk creation can partially issue before a 500 without item IDs, so automatic substitution is unsafe pending an atomic or itemized server contract.
+- [~] Response streaming for large lists via `ReadableStream` — `streamAll()` backpressures paginated items and aborts active fetches on cancellation, with unit and live list proof. The server has no streamed list response; one whole JSON page is still buffered.
 
 ### 5.3 Ecosystem
 
-- [ ] React hooks package (`@niyantra/commerce-react`) with `useLicense`, `useSubscription`, `useUsage` wrappers over TanStack Query
-- [ ] Next.js App Router helpers — server actions + route handler factories
-- [ ] Hono middleware package
-- [ ] Express middleware package (webhook handler + auth)
-- [ ] Cloudflare Workers template repo
+- [~] React hooks package (`@niyantra/commerce-react`) with `useLicense`, `useSubscription`, `useUsage` wrappers over TanStack Query — private companion, query-key isolation, cancellation, SSR and type tests pass; publication remains open.
+- [~] Next.js App Router helpers — a private `createNextWebhookRoute` factory wraps the verified handler; server actions and actual Next runner proof remain open.
+- [~] Hono middleware package — a private raw-Request webhook adapter and signed-byte/type tests exist; actual Hono runner proof remains open.
+- [~] Express middleware package (webhook handler + auth) — a private raw-body webhook adapter and signed-byte/type tests exist; auth middleware and actual Express runner proof remain open.
+- [~] Cloudflare Workers template repo — a web-only Worker webhook example bundles and passes route tests; a standalone template repo and durable dedupe example remain open.
 - [ ] gRPC client support via `@connectrpc/connect` (when Commerce adds gRPC / Connect)
 - [ ] GraphQL client support (when Commerce adds GraphQL)
 - [ ] SSE / event streaming client for real-time updates
