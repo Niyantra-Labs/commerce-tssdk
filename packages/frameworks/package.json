@@ -1,0 +1,29 @@
+{
+  "name": "@niyantra/commerce-frameworks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional webhook route adapters for Next.js, Hono, and Express",
+  "exports": {
+    "./next": {
+      "types": "./next.d.mts",
+      "default": "./next.mjs"
+    },
+    "./hono": {
+      "types": "./hono.d.mts",
+      "default": "./hono.mjs"
+    },
+    "./express": {
+      "types": "./express.d.mts",
+      "default": "./express.mjs"
+    }
+  },
+  "peerDependencies": {
+    "@niyantra/commerce": "^0.1.0"
+  },
+  "files": [
+    "*.mjs",
+    "*.d.mts",
+    "README.md"
+  ]
+}
