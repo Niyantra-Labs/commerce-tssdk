@@ -1,0 +1,22 @@
+{
+  "name": "@niyantra/commerce-msw-mocks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Route-manifest-derived MSW handlers for Commerce consumer tests",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.mjs"
+    }
+  },
+  "peerDependencies": {
+    "msw": "^2.15.0"
+  },
+  "files": [
+    "index.mjs",
+    "index.d.ts",
+    "routes.mjs",
+    "README.md"
+  ]
+}

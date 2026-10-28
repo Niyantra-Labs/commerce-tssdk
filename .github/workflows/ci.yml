@@ -42,6 +42,7 @@ jobs:
       - run: npm run lint
       - run: npm run fmt:check
       - run: npm test
+      - run: npm run msw:check
       - run: npm run coverage
       - name: Check Codecov configuration
         id: codecov

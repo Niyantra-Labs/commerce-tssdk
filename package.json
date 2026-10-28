@@ -55,7 +55,9 @@
     "changeset:status": "changeset status",
     "changeset:version": "changeset version",
     "benchmark:throughput": "npm run build && node scripts/benchmark-throughput.mjs",
-    "profile:bundles": "node scripts/profile-bundles.mjs"
+    "profile:bundles": "node scripts/profile-bundles.mjs",
+    "msw:generate": "node scripts/generate-msw-routes.mjs",
+    "msw:check": "node scripts/generate-msw-routes.mjs --check"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.1",
