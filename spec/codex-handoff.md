@@ -101,3 +101,29 @@ There are no SDK runtime behavior or Commerce server changes in this continuatio
 - The full local gate passed: build, typecheck, zero-warning lint, format check, **333 tests**, docs, contract check, package smoke, coverage, bundle check, API report, and `npm audit --omit=dev` (**zero vulnerabilities**). Coverage was **91.97% statements, 85.8% branches, 96.97% functions, 93.85% lines**, and `coverage/lcov.info` was generated. The bundle measured **11,145 gzip bytes full SDK** and **678 bytes PlanService-only**. `npm pack --dry-run --json` contained **60 allowed files** under `dist/` or LICENSE, README.md, and package.json.
 - `actionlint` v1.7.7 passed both workflows. `git ls-remote` matched checkout v4.2.2 and setup-node v4.4.0 to the existing pinned SHAs, and Codecov v5.5.5 to the new SHA. GitHub Actions, the Codecov upload, macOS/Windows runner legs, Node 22, the manual release workflow, and npm publishing were **not run**. No push, merge, or rebase was attempted.
 - No live server or cross-runtime smoke was rerun because this continuation changed only release tooling, coverage output, CI, and documentation. The last live/runtime proof remains the Phase 3 result above.
+
+## Phase 5 SDK continuation (2026-10-28)
+
+### Commits and behavior
+
+- SDK `b1f2399` — adds a reproducible loopback concurrent GET benchmark and specialized browser bundle profiles, with no performance claim about a real Commerce deployment.
+- SDK `4ef5c8a` — adds `CollectionService.streamAll()` with backpressure, caller abort, and reader cancellation tests. It buffers one JSON page at a time; the server has no streamed list response. The public API report was updated.
+- SDK `202a13d` — generates private MSW route handlers from the checked server manifest. Consumers must supply actual response fixtures because no schema is available.
+- SDK `791f64a` — proves `streamAll()` against a real org-scoped product list on the live Commerce stack.
+- SDK `bb58c5e` — schedules weekly route/envelope and generated-MSW drift checks using the private Commerce checkout; this does not claim model-field drift coverage.
+- SDK `c45776c` — adds a browser-bundled Cloudflare Worker webhook example and verifies that cancelling a stream during an active page fetch aborts the fetch.
+- SDK `7eb2d0e` — adds private TanStack Query `useLicense`, `useSubscription`, and `useUsage` hooks with per-client cache keys, cancellation, SSR smoke, and type tests. The root SDK still has zero runtime dependencies.
+- SDK `abd8cf7` — adds private Next, Hono, and Express webhook adapters around the verified raw-byte handler, with signed-delivery and type tests. Framework-runner integration is not yet proven.
+- SDK `c8dc087` — documents performance results, package boundaries, server blockers, and evidence-based Phase 5 checklist status; adds a changeset for the public stream API.
+- SDK `fc31a28` — makes the Express adapter return 405 for non-POST before checking raw body, matching the core handler; `test/phase5-frameworks.test.mjs` covers it.
+- The final handoff commit records this continuation.
+
+`streamAll()` is the only new core SDK behavior visible to callers. It performs the same paginated GETs as `listAll()` and returns a `ReadableStream`; cancelling the reader aborts an active fetch. No Commerce server code, migration, or environment setting changed. The private React and framework companions are not part of the core tarball and were not published.
+
+### Verification and limits
+
+- The full SDK gate passed before the final Express method fix: `npm ci`, build, typecheck, lint, fmt:check, **345 tests**, docs, contract:check, msw:check, package smoke, coverage, bundle check, API report, runtime audit (**zero vulnerabilities**), changeset status, and `npm pack --dry-run --json` (**60 allowed files**). Coverage: **92.04% statements, 86.21% branches, 97.02% functions, 94% lines**. Full SDK bundle: **11,299 gzip bytes**; PlanService-only: **893 bytes**; Worker example: **1,548 bytes**. The final Express change then passed its targeted test, lint, typecheck, and format checks; the final full gate is recorded below.
+- `npm run test:integration` passed the new live product stream check and all existing smoke assertions against `127.0.0.1:19094` without a server rebuild. `npm run test:runtimes` passed across Node 20/24, Bun 1.1.26, Deno 2.1.4, Chrome 156, and workerd using Miniflare 4.20260730.0 installed outside the repo. Browser signed usage reporting remains the expected CORS-blocked check. The first runtime run skipped workerd because `MINIFLARE_DIR` was unset; the second run included it.
+- `actionlint` v1.7.7 passed both workflows. The scheduled drift job has not run on GitHub and needs `COMMERCE_REPO_TOKEN`. GitHub runner behavior and actual Codecov upload remain unverified. No npm publish, push, merge, or rebase was attempted.
+- Phase 5 cannot be fully closed from this SDK branch: Commerce publishes no trustworthy OpenAPI model schema and has no gRPC/Connect, GraphQL, SSE, HTTP list-stream, or multi-region failover contract. Server license bulk creation may partially issue before a 500 without returning item IDs, so the SDK cannot safely optimize writes through it. Next/Hono/Express adapters need actual framework-runner tests; the Worker example needs a standalone template and durable dedupe example; the admin variant needs a distinct server contract. These stay open or partial in `spec/todo.md`.
+- The **final full local gate** passed after `fc31a28`: `npm ci`, build, typecheck, zero-warning lint, fmt:check, **346 tests**, docs, contract:check, msw:check, package smoke, coverage, bundle check, API report, `npm audit --omit=dev` (**zero vulnerabilities**), changeset status, and a 60-file allowed npm dry-run pack. Coverage remained **92.04% statements, 86.21% branches, 97.02% functions, 94% lines**.
