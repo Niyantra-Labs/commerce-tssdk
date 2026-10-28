@@ -2,9 +2,11 @@
 
 A dependency-free ESM TypeScript client for the Niyantra Commerce HTTP API: licensing, activations, offline certificates, subscriptions, usage metering, orders and invoices, webhooks, referrals and affiliates, payment gateways, notifications, and binary releases.
 
-This package is under active development and is **not published**. Every method is contract-tested against the Commerce route handlers; live smokes exercise representative workflows against a Commerce server. See [spec/todo.md](spec/todo.md) for what remains before a release.
+This package is in the `0.x` series. Every method is contract-tested against the Commerce route handlers; live smokes exercise representative workflows against a Commerce server. See [spec/todo.md](spec/todo.md) for the current verification limits.
 
 ## Quick start
+
+Install the ESM package with `npm install @niyantra/commerce` (Node.js 20 or newer).
 
 ```ts
 import { Client } from '@niyantra/commerce';
@@ -122,7 +124,7 @@ Local verification checks the signature, machine fingerprint, expiry, and grace 
 
 Cryptographic checks and their limits are detailed in [the security review](doc/security.md).
 
-For contributors, see [the setup and PR guide](CONTRIBUTING.md) and [CI gates](doc/ci.md). Maintainers can use [the release checklist](doc/release.md); the package remains private.
+For contributors, see [the setup and PR guide](CONTRIBUTING.md) and [CI gates](doc/ci.md). Maintainers can use [the release checklist](doc/release.md).
 
 ## Runtime support
 
